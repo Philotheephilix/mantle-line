@@ -6,6 +6,11 @@ import { RetrievalService } from './retrieval/retrievalService.js';
 import { Orchestrator } from './orchestrator/orchestrator.js';
 import { HealthMonitor } from './monitor/healthMonitor.js';
 import { APIServer } from './api/server.js';
+import { PredictionService } from './futures/predictionService.js';
+import { FuturesContractStorage } from './contract/futuresContractStorage.js';
+import { PNLCalculator } from './pnl/pnlCalculator.js';
+import { PositionService } from './futures/positionService.js';
+import { PositionCloser } from './futures/positionCloser.js';
 import logger from './utils/logger.js';
 import config from './config/config.js';
 
@@ -21,14 +26,22 @@ class MNTPriceOracleApp {
   private orchestrator: Orchestrator;
   private healthMonitor: HealthMonitor;
   private apiServer: APIServer;
+  
+  // Futures components
+  private futuresContractStorage?: FuturesContractStorage;
+  private predictionService?: PredictionService;
+  private pnlCalculator?: PNLCalculator;
+  private positionService?: PositionService;
+  private positionCloser?: PositionCloser;
 
   constructor() {
-    logger.info('Initializing MNT Price Oracle', {
+    logger.info('Initializing MNT Price Oracle & Line Futures', {
       network: config.network,
-      contractAddress: config.contractAddress
+      contractAddress: config.contractAddress,
+      futuresContractAddress: config.futuresContractAddress
     });
 
-    // Initialize components
+    // Initialize oracle components
     this.ingester = new PriceIngester();
     this.aggregator = new PriceAggregator();
     this.eigenDASubmitter = new EigenDASubmitter();
@@ -51,10 +64,44 @@ class MNTPriceOracleApp {
       this.contractStorage
     );
 
+    // Initialize futures components if contract address is configured
+    if (config.futuresContractAddress) {
+      logger.info('Initializing futures components');
+      
+      this.futuresContractStorage = new FuturesContractStorage();
+      
+      this.predictionService = new PredictionService(
+        this.eigenDASubmitter,
+        config.rateLimitWindowMs,
+        config.rateLimitMaxRequests
+      );
+      
+      this.pnlCalculator = new PNLCalculator();
+      
+      this.positionService = new PositionService(
+        this.futuresContractStorage,
+        this.predictionService,
+        this.pnlCalculator,
+        this.eigenDASubmitter,
+        this.contractStorage,
+        this.retrievalService
+      );
+      
+      this.positionCloser = new PositionCloser(
+        this.positionService,
+        this.futuresContractStorage
+      );
+    } else {
+      logger.warn('Futures contract address not configured, futures features disabled');
+    }
+
     this.apiServer = new APIServer(
       this.retrievalService,
       this.healthMonitor,
-      this.orchestrator
+      this.orchestrator,
+      this.predictionService,
+      this.positionService,
+      this.positionCloser
     );
 
     this.setupSignalHandlers();
@@ -65,7 +112,7 @@ class MNTPriceOracleApp {
    */
   public async start(): Promise<void> {
     try {
-      logger.info('Starting MNT Price Oracle application');
+      logger.info('Starting MNT Price Oracle & Line Futures application');
 
       // Start orchestrator (includes ingester)
       await this.orchestrator.start();
@@ -73,10 +120,16 @@ class MNTPriceOracleApp {
       // Start health monitor
       this.healthMonitor.start();
 
+      // Start position closer cron job if available
+      if (this.positionCloser) {
+        this.positionCloser.start();
+        logger.info('Position closer cron job started');
+      }
+
       // Start API server
       await this.apiServer.start();
 
-      logger.info('MNT Price Oracle application started successfully');
+      logger.info('MNT Price Oracle & Line Futures application started successfully');
       logger.info('API available at', {
         url: `http://${config.apiHost}:${config.port}`
       });
@@ -91,11 +144,17 @@ class MNTPriceOracleApp {
    * Stop the application
    */
   public async stop(): Promise<void> {
-    logger.info('Stopping MNT Price Oracle application');
+    logger.info('Stopping MNT Price Oracle & Line Futures application');
 
     try {
       // Stop API server
       await this.apiServer.stop();
+
+      // Stop position closer cron job
+      if (this.positionCloser) {
+        this.positionCloser.stop();
+        logger.info('Position closer cron job stopped');
+      }
 
       // Stop health monitor
       this.healthMonitor.stop();
@@ -103,7 +162,7 @@ class MNTPriceOracleApp {
       // Stop orchestrator
       this.orchestrator.stop();
 
-      logger.info('MNT Price Oracle application stopped successfully');
+      logger.info('MNT Price Oracle & Line Futures application stopped successfully');
     } catch (error) {
       logger.error('Error stopping application', error);
       throw error;

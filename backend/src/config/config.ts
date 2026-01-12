@@ -7,6 +7,7 @@ export interface Config {
   mantleRpcUrl: string;
   mantlePrivateKey: string;
   contractAddress: string;
+  futuresContractAddress: string;
   eigendaProxyUrl: string;
   eigendaCommitmentMode: string;
   port: number;
@@ -14,6 +15,9 @@ export interface Config {
   bybitWssUrl: string;
   logLevel: string;
   alertWebhookUrl?: string;
+  adminApiKey: string;
+  rateLimitWindowMs: number;
+  rateLimitMaxRequests: number;
 }
 
 function getEnvVar(key: string, defaultValue?: string): string {
@@ -31,8 +35,9 @@ function getOptionalEnvVar(key: string, defaultValue: string): string {
 export const config: Config = {
   network: (process.env.NETWORK || 'local') as 'mainnet' | 'testnet' | 'local',
   mantleRpcUrl: getOptionalEnvVar('MANTLE_RPC_URL', 'https://rpc.sepolia.mantle.xyz'),
-  mantlePrivateKey: getEnvVar('MANTLE_PRIVATE_KEY'),
+  mantlePrivateKey: getEnvVar('MANTLE_SEPOLIA_PRIVATE_KEY'),
   contractAddress: getEnvVar('CONTRACT_ADDRESS'),
+  futuresContractAddress: getEnvVar('FUTURES_CONTRACT_ADDRESS'),
   eigendaProxyUrl: getOptionalEnvVar('EIGENDA_PROXY_URL', 'http://127.0.0.1:3100'),
   eigendaCommitmentMode: getOptionalEnvVar('EIGENDA_COMMITMENT_MODE', 'standard'),
   port: parseInt(process.env.PORT || '3001', 10),
@@ -40,6 +45,9 @@ export const config: Config = {
   bybitWssUrl: getOptionalEnvVar('BYBIT_WSS_URL', 'wss://stream.bybit.com/v5/public/spot'),
   logLevel: process.env.LOG_LEVEL || 'info',
   alertWebhookUrl: process.env.ALERT_WEBHOOK_URL,
+  adminApiKey: getEnvVar('ADMIN_API_KEY'),
+  rateLimitWindowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '60000', 10),
+  rateLimitMaxRequests: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '10', 10),
 };
 
 export default config;

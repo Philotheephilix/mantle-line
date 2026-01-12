@@ -4,19 +4,29 @@ import config from '../config/config.js';
 
 // MNTPriceOracle contract ABI (only the functions we need)
 const ORACLE_ABI = [
-  'function storeCommitment(uint256 windowStart, bytes32 commitment) external',
-  'function getCommitment(uint256 windowStart) external view returns (bytes32)',
+  'function storeCommitment(uint256 windowStart, string commitment) external',
+  'function getCommitment(uint256 windowStart) external view returns (string)',
   'function getLatestWindow() external view returns (uint256)',
   'function getWindowsInRange(uint256 start, uint256 end) external view returns (uint256[] memory)',
   'function getWindowCount() external view returns (uint256)',
-  'event CommitmentStored(uint256 indexed windowStart, bytes32 commitment, uint256 timestamp)'
+  'event CommitmentStored(uint256 indexed windowStart, string commitment, uint256 timestamp)'
 ];
+
+/**
+ * Transaction queue item
+ */
+interface QueuedTransaction {
+  execute: () => Promise<string>;
+  resolve: (value: string) => void;
+  reject: (error: Error) => void;
+}
 
 export class ContractStorage {
   private provider: ethers.JsonRpcProvider;
   private wallet: ethers.Wallet;
   private contract: ethers.Contract;
-  private nonce: number | null = null;
+  private txQueue: QueuedTransaction[] = [];
+  private isProcessingQueue = false;
 
   constructor(
     rpcUrl: string = config.mantleRpcUrl,
@@ -35,27 +45,76 @@ export class ContractStorage {
   }
 
   /**
-   * Store a commitment on-chain
+   * Store a commitment on-chain (with transaction queue and retry logic)
    */
   public async storeCommitment(windowStart: number, commitment: string): Promise<string> {
+    return this.enqueueTransaction(async () => {
+      return this.executeStoreCommitment(windowStart, commitment);
+    });
+  }
+
+  /**
+   * Enqueue a transaction to be processed sequentially
+   */
+  private async enqueueTransaction(execute: () => Promise<string>): Promise<string> {
+    return new Promise((resolve, reject) => {
+      this.txQueue.push({ execute, resolve, reject });
+      this.processQueue();
+    });
+  }
+
+  /**
+   * Process the transaction queue
+   */
+  private async processQueue(): Promise<void> {
+    if (this.isProcessingQueue || this.txQueue.length === 0) {
+      return;
+    }
+
+    this.isProcessingQueue = true;
+
+    while (this.txQueue.length > 0) {
+      const item = this.txQueue.shift()!;
+      
+      try {
+        const result = await item.execute();
+        item.resolve(result);
+      } catch (error) {
+        item.reject(error as Error);
+      }
+    }
+
+    this.isProcessingQueue = false;
+  }
+
+  /**
+   * Execute store commitment with retry logic
+   */
+  private async executeStoreCommitment(windowStart: number, commitment: string): Promise<string> {
     logger.info('Storing commitment on-chain', {
       windowStart,
       commitment
     });
 
-    try {
-      // Ensure commitment is properly formatted as bytes32
-      const commitmentBytes32 = this.formatCommitment(commitment);
+    const maxRetries = 3;
+    const retryDelays = [2000, 4000, 8000]; // 2s, 4s, 8s
 
-      // Get current nonce
-      if (this.nonce === null) {
-        this.nonce = await this.provider.getTransactionCount(this.wallet.address, 'pending');
-      }
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        // Get fresh nonce from network for each attempt
+        const nonce = await this.provider.getTransactionCount(this.wallet.address, 'pending');
+
+        logger.debug('Transaction attempt', {
+          windowStart,
+          commitment: commitment.substring(0, 20) + '...',
+          attempt: attempt + 1,
+          nonce
+        });
 
       // Estimate gas
       const gasEstimate = await this.contract.storeCommitment.estimateGas(
         windowStart,
-        commitmentBytes32
+          commitment
       );
 
       // Add 20% buffer to gas estimate
@@ -69,27 +128,26 @@ export class ContractStorage {
         windowStart,
         gasLimit: gasLimit.toString(),
         gasPrice: gasPrice?.toString(),
-        nonce: this.nonce
+          nonce,
+          attempt: attempt + 1
       });
 
       // Send transaction
       const tx = await this.contract.storeCommitment(
         windowStart,
-        commitmentBytes32,
+          commitment,
         {
           gasLimit,
           gasPrice,
-          nonce: this.nonce
+            nonce
         }
       );
-
-      // Increment nonce for next transaction
-      this.nonce++;
 
       logger.info('Transaction sent', {
         windowStart,
         txHash: tx.hash,
-        nonce: this.nonce - 1
+          nonce,
+          attempt: attempt + 1
       });
 
       // Wait for confirmation
@@ -99,19 +157,67 @@ export class ContractStorage {
         windowStart,
         txHash: receipt.hash,
         blockNumber: receipt.blockNumber,
-        gasUsed: receipt.gasUsed.toString()
+          gasUsed: receipt.gasUsed.toString(),
+          attempt: attempt + 1
       });
 
       return receipt.hash;
 
-    } catch (error) {
-      logger.error('Failed to store commitment', error);
-      
-      // Reset nonce on error to resync
-      this.nonce = null;
-      
+      } catch (error: any) {
+        const isNonceError = this.isNonceError(error);
+        const isLastAttempt = attempt === maxRetries - 1;
+
+        logger.warn('Transaction attempt failed', {
+          windowStart,
+          attempt: attempt + 1,
+          maxRetries,
+          isNonceError,
+          error: error.message || error.toString()
+        });
+
+        if (isLastAttempt) {
+          logger.error('Failed to store commitment after all retries', {
+            windowStart,
+            attempts: maxRetries,
+            error
+          });
       throw error;
     }
+
+        // Wait before retry with exponential backoff
+        const delay = retryDelays[attempt];
+        logger.info('Retrying transaction', {
+          windowStart,
+          nextAttempt: attempt + 2,
+          delayMs: delay
+        });
+        await this.sleep(delay);
+      }
+    }
+
+    throw new Error('Failed to store commitment: max retries exceeded');
+  }
+
+  /**
+   * Check if error is nonce-related
+   */
+  private isNonceError(error: any): boolean {
+    const errorStr = error.message || error.toString();
+    return (
+      errorStr.includes('nonce') ||
+      errorStr.includes('NONCE_EXPIRED') ||
+      errorStr.includes('REPLACEMENT_UNDERPRICED') ||
+      errorStr.includes('replacement transaction underpriced') ||
+      error.code === 'NONCE_EXPIRED' ||
+      error.code === 'REPLACEMENT_UNDERPRICED'
+    );
+  }
+
+  /**
+   * Sleep utility
+   */
+  private sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 
   /**
@@ -193,33 +299,6 @@ export class ContractStorage {
     }
   }
 
-  /**
-   * Format commitment string to bytes32
-   */
-  private formatCommitment(commitment: string): string {
-    // Remove '0x' prefix if present
-    let hex = commitment.startsWith('0x') ? commitment.slice(2) : commitment;
-    
-    // Pad to 32 bytes (64 hex characters) if needed
-    if (hex.length < 64) {
-      hex = hex.padStart(64, '0');
-    }
-    
-    // Truncate if too long
-    if (hex.length > 64) {
-      hex = hex.slice(0, 64);
-    }
-    
-    return '0x' + hex;
-  }
-
-  /**
-   * Reset nonce (useful after errors)
-   */
-  public async resetNonce(): Promise<void> {
-    this.nonce = await this.provider.getTransactionCount(this.wallet.address, 'pending');
-    logger.info('Nonce reset', { nonce: this.nonce });
-  }
 }
 
 export default ContractStorage;

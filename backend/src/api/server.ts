@@ -3,6 +3,9 @@ import { RetrievalService } from '../retrieval/retrievalService.js';
 import { HealthMonitor } from '../monitor/healthMonitor.js';
 import { Orchestrator } from '../orchestrator/orchestrator.js';
 import { LiquidationRequest } from '../types/index.js';
+import { PredictionService } from '../futures/predictionService.js';
+import { PositionService } from '../futures/positionService.js';
+import { PositionCloser } from '../futures/positionCloser.js';
 import logger from '../utils/logger.js';
 import config from '../config/config.js';
 
@@ -11,17 +14,26 @@ export class APIServer {
   private retrievalService: RetrievalService;
   private healthMonitor: HealthMonitor;
   private orchestrator: Orchestrator;
+  private predictionService?: PredictionService;
+  private positionService?: PositionService;
+  private positionCloser?: PositionCloser;
   private server: any = null;
 
   constructor(
     retrievalService: RetrievalService,
     healthMonitor: HealthMonitor,
-    orchestrator: Orchestrator
+    orchestrator: Orchestrator,
+    predictionService?: PredictionService,
+    positionService?: PositionService,
+    positionCloser?: PositionCloser
   ) {
     this.app = express();
     this.retrievalService = retrievalService;
     this.healthMonitor = healthMonitor;
     this.orchestrator = orchestrator;
+    this.predictionService = predictionService;
+    this.positionService = positionService;
+    this.positionCloser = positionCloser;
 
     this.setupMiddleware();
     this.setupRoutes();
@@ -84,12 +96,26 @@ export class APIServer {
     // Get metrics
     this.app.get('/api/metrics', this.handleMetrics.bind(this));
 
+    // Futures endpoints
+    if (this.predictionService) {
+      this.app.post('/api/predictions/upload', this.handlePredictionUpload.bind(this));
+      this.app.get('/api/predictions/:commitmentId', this.handlePredictionRetrieve.bind(this));
+    }
+
+    if (this.positionService) {
+      this.app.get('/api/position/:positionId', this.handleGetPosition.bind(this));
+      this.app.get('/api/positions/user/:address', this.handleGetUserPositions.bind(this));
+      this.app.get('/api/positions/open', this.handleGetOpenPositions.bind(this));
+    }
+
+    if (this.positionCloser) {
+      this.app.post('/api/admin/close-position', this.handleClosePosition.bind(this));
+      this.app.post('/api/admin/close-expired', this.handleCloseExpired.bind(this));
+    }
+
     // Root endpoint
     this.app.get('/', (req, res) => {
-      res.json({
-        name: 'MNT Price Oracle API',
-        version: '1.0.0',
-        endpoints: [
+      const endpoints = [
           'GET /api/health',
           'GET /api/latest',
           'GET /api/window/:timestamp',
@@ -97,7 +123,28 @@ export class APIServer {
           'POST /api/liquidation',
           'GET /api/stats',
           'GET /api/metrics'
-        ]
+      ];
+
+      if (this.predictionService) {
+        endpoints.push('POST /api/predictions/upload');
+        endpoints.push('GET /api/predictions/:commitmentId');
+      }
+
+      if (this.positionService) {
+        endpoints.push('GET /api/position/:positionId');
+        endpoints.push('GET /api/positions/user/:address');
+        endpoints.push('GET /api/positions/open');
+      }
+
+      if (this.positionCloser) {
+        endpoints.push('POST /api/admin/close-position');
+        endpoints.push('POST /api/admin/close-expired');
+      }
+
+      res.json({
+        name: 'MNT Price Oracle & Line Futures API',
+        version: '1.0.0',
+        endpoints
       });
     });
   }
@@ -152,7 +199,8 @@ export class APIServer {
    */
   private async handleWindow(req: Request, res: Response): Promise<void> {
     try {
-      const timestamp = parseInt(req.params.timestamp, 10);
+      const timestampStr = Array.isArray(req.params.timestamp) ? req.params.timestamp[0] : req.params.timestamp;
+      const timestamp = parseInt(timestampStr, 10);
 
       if (isNaN(timestamp)) {
         res.status(400).json({ error: 'Invalid timestamp' });
@@ -308,6 +356,216 @@ export class APIServer {
     } catch (error) {
       logger.error('Failed to get metrics', error);
       res.status(500).json({ error: 'Failed to retrieve metrics' });
+    }
+  }
+
+  /**
+   * Handle prediction upload
+   */
+  private async handlePredictionUpload(req: Request, res: Response): Promise<void> {
+    try {
+      if (!this.predictionService) {
+        res.status(503).json({ error: 'Prediction service not available' });
+        return;
+      }
+
+      const { predictions, userAddress, timestamp } = req.body;
+
+      if (!predictions || !userAddress) {
+        res.status(400).json({ error: 'Missing required fields: predictions, userAddress' });
+        return;
+      }
+
+      const ipAddress = Array.isArray(req.ip) ? req.ip[0] : req.ip;
+      const result = await this.predictionService.uploadPredictions(
+        { predictions, userAddress, timestamp },
+        ipAddress
+      );
+
+      res.json(result);
+    } catch (error: any) {
+      logger.error('Failed to upload predictions', error);
+      
+      if (error.message?.includes('Rate limit')) {
+        res.status(429).json({ error: error.message });
+      } else if (error.message?.includes('Invalid') || error.message?.includes('must be')) {
+        res.status(400).json({ error: error.message });
+      } else {
+        res.status(500).json({ error: 'Failed to upload predictions' });
+      }
+    }
+  }
+
+  /**
+   * Handle prediction retrieval
+   */
+  private async handlePredictionRetrieve(req: Request, res: Response): Promise<void> {
+    try {
+      if (!this.predictionService) {
+        res.status(503).json({ error: 'Prediction service not available' });
+        return;
+      }
+
+      const commitmentId = Array.isArray(req.params.commitmentId) ? req.params.commitmentId[0] : req.params.commitmentId;
+
+      const data = await this.predictionService.retrievePredictions(commitmentId);
+
+      res.json({
+        success: true,
+        commitmentId,
+        data,
+        predictionsCount: data.predictions?.length || 0
+      });
+    } catch (error) {
+      logger.error('Failed to retrieve predictions', error);
+      res.status(404).json({ error: 'Predictions not found' });
+    }
+  }
+
+  /**
+   * Handle get position
+   */
+  private async handleGetPosition(req: Request, res: Response): Promise<void> {
+    try {
+      if (!this.positionService) {
+        res.status(503).json({ error: 'Position service not available' });
+        return;
+      }
+
+      const positionIdStr = Array.isArray(req.params.positionId) ? req.params.positionId[0] : req.params.positionId;
+      const positionId = parseInt(positionIdStr, 10);
+      const includeAnalyticsQuery = Array.isArray(req.query.includeAnalytics) ? req.query.includeAnalytics[0] : req.query.includeAnalytics;
+      const includePredictionsQuery = Array.isArray(req.query.includePredictions) ? req.query.includePredictions[0] : req.query.includePredictions;
+      const includeAnalytics = includeAnalyticsQuery !== 'false';
+      const includePredictions = includePredictionsQuery === 'true';
+
+      const position = await this.positionService.getPositionDetails(
+        positionId,
+        includePredictions,
+        includeAnalytics
+      );
+
+      res.json({ success: true, position });
+    } catch (error) {
+      logger.error('Failed to get position', error);
+      res.status(404).json({ error: 'Position not found' });
+    }
+  }
+
+  /**
+   * Handle get user positions
+   */
+  private async handleGetUserPositions(req: Request, res: Response): Promise<void> {
+    try {
+      if (!this.positionService) {
+        res.status(503).json({ error: 'Position service not available' });
+        return;
+      }
+
+      const address = Array.isArray(req.params.address) ? req.params.address[0] : req.params.address;
+      const positionIds = await this.positionService.getUserPositions(address);
+      const stats = await this.positionService.getUserStats(address);
+
+      res.json({
+        success: true,
+        userAddress: address,
+        positionIds,
+        stats
+      });
+    } catch (error) {
+      logger.error('Failed to get user positions', error);
+      res.status(500).json({ error: 'Failed to retrieve user positions' });
+    }
+  }
+
+  /**
+   * Handle get open positions
+   */
+  private async handleGetOpenPositions(req: Request, res: Response): Promise<void> {
+    try {
+      if (!this.positionService) {
+        res.status(503).json({ error: 'Position service not available' });
+        return;
+      }
+
+      const openPositions = await this.positionService.getOpenPositions();
+
+      res.json({
+        success: true,
+        openPositions,
+        count: openPositions.length
+      });
+    } catch (error) {
+      logger.error('Failed to get open positions', error);
+      res.status(500).json({ error: 'Failed to retrieve open positions' });
+    }
+  }
+
+  /**
+   * Handle close position (admin)
+   */
+  private async handleClosePosition(req: Request, res: Response): Promise<void> {
+    try {
+      // Verify admin API key
+      const apiKey = Array.isArray(req.headers['x-api-key']) ? req.headers['x-api-key'][0] : req.headers['x-api-key'];
+      if (apiKey !== config.adminApiKey) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+      }
+
+      if (!this.positionService) {
+        res.status(503).json({ error: 'Position service not available' });
+        return;
+      }
+
+      const { positionId } = req.body;
+
+      if (positionId === undefined) {
+        res.status(400).json({ error: 'Missing required field: positionId' });
+        return;
+      }
+
+      const result = await this.positionService.closePosition(positionId);
+
+      res.json(result);
+    } catch (error: any) {
+      logger.error('Failed to close position', error);
+      
+      if (error.message?.includes('cannot be closed yet')) {
+        res.status(400).json({ error: error.message });
+      } else if (error.message?.includes('already closed')) {
+        res.status(400).json({ error: error.message });
+      } else {
+        res.status(500).json({ error: 'Failed to close position' });
+      }
+    }
+  }
+
+  /**
+   * Handle close expired positions (admin)
+   */
+  private async handleCloseExpired(req: Request, res: Response): Promise<void> {
+    try {
+      // Verify admin API key
+      const apiKey = Array.isArray(req.headers['x-api-key']) ? req.headers['x-api-key'][0] : req.headers['x-api-key'];
+      if (apiKey !== config.adminApiKey) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+      }
+
+      if (!this.positionCloser) {
+        res.status(503).json({ error: 'Position closer service not available' });
+        return;
+      }
+
+      const { maxPositions } = req.body;
+
+      const result = await this.positionCloser.closeExpiredPositions(maxPositions);
+
+      res.json(result);
+    } catch (error) {
+      logger.error('Failed to close expired positions', error);
+      res.status(500).json({ error: 'Failed to close expired positions' });
     }
   }
 
