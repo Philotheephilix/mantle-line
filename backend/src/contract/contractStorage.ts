@@ -111,57 +111,57 @@ export class ContractStorage {
           nonce
         });
 
-        // Estimate gas
-        const gasEstimate = await this.contract.storeCommitment.estimateGas(
-          windowStart,
+      // Estimate gas
+      const gasEstimate = await this.contract.storeCommitment.estimateGas(
+        windowStart,
           commitment
-        );
+      );
 
-        // Add 20% buffer to gas estimate
-        const gasLimit = (gasEstimate * 120n) / 100n;
+      // Add 20% buffer to gas estimate
+      const gasLimit = (gasEstimate * 120n) / 100n;
 
-        // Get current gas price
-        const feeData = await this.provider.getFeeData();
-        const gasPrice = feeData.gasPrice;
+      // Get current gas price
+      const feeData = await this.provider.getFeeData();
+      const gasPrice = feeData.gasPrice;
 
-        logger.debug('Transaction parameters', {
-          windowStart,
-          gasLimit: gasLimit.toString(),
-          gasPrice: gasPrice?.toString(),
+      logger.debug('Transaction parameters', {
+        windowStart,
+        gasLimit: gasLimit.toString(),
+        gasPrice: gasPrice?.toString(),
           nonce,
           attempt: attempt + 1
-        });
+      });
 
-        // Send transaction
-        const tx = await this.contract.storeCommitment(
-          windowStart,
+      // Send transaction
+      const tx = await this.contract.storeCommitment(
+        windowStart,
           commitment,
-          {
-            gasLimit,
-            gasPrice,
+        {
+          gasLimit,
+          gasPrice,
             nonce
-          }
-        );
+        }
+      );
 
-        logger.info('Transaction sent', {
-          windowStart,
-          txHash: tx.hash,
+      logger.info('Transaction sent', {
+        windowStart,
+        txHash: tx.hash,
           nonce,
           attempt: attempt + 1
-        });
+      });
 
-        // Wait for confirmation
-        const receipt = await tx.wait();
+      // Wait for confirmation
+      const receipt = await tx.wait();
 
-        logger.info('Transaction confirmed', {
-          windowStart,
-          txHash: receipt.hash,
-          blockNumber: receipt.blockNumber,
+      logger.info('Transaction confirmed', {
+        windowStart,
+        txHash: receipt.hash,
+        blockNumber: receipt.blockNumber,
           gasUsed: receipt.gasUsed.toString(),
           attempt: attempt + 1
-        });
+      });
 
-        return receipt.hash;
+      return receipt.hash;
 
       } catch (error: any) {
         const isNonceError = this.isNonceError(error);
@@ -181,8 +181,8 @@ export class ContractStorage {
             attempts: maxRetries,
             error
           });
-          throw error;
-        }
+      throw error;
+    }
 
         // Wait before retry with exponential backoff
         const delay = retryDelays[attempt];

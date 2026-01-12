@@ -116,13 +116,13 @@ export class APIServer {
     // Root endpoint
     this.app.get('/', (req, res) => {
       const endpoints = [
-        'GET /api/health',
-        'GET /api/latest',
-        'GET /api/window/:timestamp',
-        'GET /api/history?start=<timestamp>&end=<timestamp>',
-        'POST /api/liquidation',
-        'GET /api/stats',
-        'GET /api/metrics'
+          'GET /api/health',
+          'GET /api/latest',
+          'GET /api/window/:timestamp',
+          'GET /api/history?start=<timestamp>&end=<timestamp>',
+          'POST /api/liquidation',
+          'GET /api/stats',
+          'GET /api/metrics'
       ];
 
       if (this.predictionService) {

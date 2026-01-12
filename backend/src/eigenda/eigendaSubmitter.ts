@@ -248,9 +248,9 @@ export class EigenDASubmitter {
           maxRetries
         });
 
-        const response = await fetch(endpoint, {
-          method: 'GET',
-        });
+    const response = await fetch(endpoint, {
+      method: 'GET',
+    });
 
         // Handle 404 - data not found (don't retry)
         if (response.status === 404) {
@@ -259,23 +259,23 @@ export class EigenDASubmitter {
         }
 
         // Handle other non-OK responses
-        if (!response.ok) {
-          throw new Error(
-            `EigenDA proxy GET returned ${response.status}: ${response.statusText}`
-          );
-        }
+    if (!response.ok) {
+      throw new Error(
+        `EigenDA proxy GET returned ${response.status}: ${response.statusText}`
+      );
+    }
 
-        const dataBytes = await response.arrayBuffer();
-        const dataJson = Buffer.from(dataBytes).toString('utf-8');
+    const dataBytes = await response.arrayBuffer();
+    const dataJson = Buffer.from(dataBytes).toString('utf-8');
         const payload = JSON.parse(dataJson);
 
-        logger.info('Data retrieved from EigenDA', {
-          commitment,
+    logger.info('Data retrieved from EigenDA', {
+      commitment,
           dataType: payload.type || 'unknown',
           attempt: attempt + 1
-        });
+    });
 
-        return payload;
+    return payload;
 
       } catch (error: any) {
         const isLastAttempt = attempt === maxRetries - 1;
