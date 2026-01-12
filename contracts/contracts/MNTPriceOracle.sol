@@ -3,12 +3,12 @@ pragma solidity ^0.8.28;
 
 /**
  * @title MNTPriceOracle
- * @notice Stores EigenDA commitment hashes for MNT/USDT price data windows
+ * @notice Stores EigenDA commitment strings for MNT/USDT price data windows
  * @dev Each commitment represents a 60-second price window stored in EigenDA
  */
 contract MNTPriceOracle {
-    // Mapping from window start timestamp to EigenDA commitment hash
-    mapping(uint256 => bytes32) public priceCommitments;
+    // Mapping from window start timestamp to EigenDA commitment string
+    mapping(uint256 => string) public priceCommitments;
     
     // Mapping from window start timestamp to block timestamp when commitment was stored
     mapping(uint256 => uint256) public commitmentTimestamps;
@@ -28,7 +28,7 @@ contract MNTPriceOracle {
     // Events
     event CommitmentStored(
         uint256 indexed windowStart,
-        bytes32 commitment,
+        string commitment,
         uint256 timestamp
     );
     
@@ -67,12 +67,12 @@ contract MNTPriceOracle {
     }
     
     /**
-     * @notice Store a commitment hash for a price window
+     * @notice Store a commitment string for a price window
      * @param windowStart Unix timestamp of the window start (minute boundary)
-     * @param commitment EigenDA commitment hash (32 bytes)
+     * @param commitment EigenDA commitment string
      */
-    function storeCommitment(uint256 windowStart, bytes32 commitment) external onlySubmitter {
-        require(commitment != bytes32(0), "MNTPriceOracle: commitment is zero");
+    function storeCommitment(uint256 windowStart, string memory commitment) external onlySubmitter {
+        require(bytes(commitment).length > 0, "MNTPriceOracle: commitment is empty");
         require(windowStart > 0, "MNTPriceOracle: invalid window start");
         require(windowStart % 60 == 0, "MNTPriceOracle: window start must be minute boundary");
         
@@ -90,11 +90,11 @@ contract MNTPriceOracle {
     }
     
     /**
-     * @notice Get the commitment hash for a specific window
+     * @notice Get the commitment string for a specific window
      * @param windowStart Unix timestamp of the window start
-     * @return commitment The EigenDA commitment hash
+     * @return commitment The EigenDA commitment string
      */
-    function getCommitment(uint256 windowStart) external view returns (bytes32) {
+    function getCommitment(uint256 windowStart) external view returns (string memory) {
         return priceCommitments[windowStart];
     }
     
