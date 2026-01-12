@@ -26,7 +26,7 @@ export class PNLCalculator {
    * @param predictions Array of 60 predicted prices
    * @param actualPrices Array of 60 actual prices
    * @param amount Deposited amount in wei
-   * @param leverage Leverage multiplier (1-50)
+   * @param leverage Leverage multiplier (1-2500)
    * @param feePercentage Fee percentage in basis points (200 = 2%)
    * @returns PNLResult with detailed breakdown
    */
@@ -47,8 +47,8 @@ export class PNLCalculator {
     if (amount <= 0) {
       throw new Error('Amount must be positive');
     }
-    if (leverage < 1 || leverage > 50) {
-      throw new Error('Leverage must be between 1 and 50');
+    if (leverage < 1 || leverage > 2500) {
+      throw new Error('Leverage must be between 1 and 2500');
     }
 
     logger.debug('Calculating PNL', {

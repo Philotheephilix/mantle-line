@@ -11,7 +11,7 @@ contract LineFutures {
     struct Position {
         address user;                      // User's wallet address
         uint256 amount;                    // Deposited amount (in wei)
-        uint8 leverage;                    // 1x to 50x
+        uint16 leverage;                   // 1x to 2500x
         uint256 openTimestamp;             // Block timestamp when opened
         string predictionCommitmentId;     // EigenDA commitment for predictions (full commitment)
         bool isOpen;                       // Position status
@@ -29,7 +29,7 @@ contract LineFutures {
 
     // Constants
     uint256 public constant MIN_AMOUNT = 10 * 10**18;     // 10 ETH minimum
-    uint8 public constant MAX_LEVERAGE = 50;
+    uint16 public constant MAX_LEVERAGE = 2500;
     uint256 public constant POSITION_DURATION = 60;       // seconds
 
     // Fee system
@@ -46,7 +46,7 @@ contract LineFutures {
         uint256 indexed positionId,
         address indexed user,
         uint256 amount,
-        uint8 leverage,
+        uint16 leverage,
         uint256 timestamp,
         string predictionCommitmentId
     );
@@ -100,12 +100,12 @@ contract LineFutures {
 
     /**
      * @notice Open a new position
-     * @param _leverage Leverage multiplier (1-50)
+     * @param _leverage Leverage multiplier (1-2500)
      * @param _predictionCommitmentId EigenDA commitment ID for user predictions (full commitment string)
      * @return positionId The ID of the newly created position
      */
     function openPosition(
-        uint8 _leverage,
+        uint16 _leverage,
         string memory _predictionCommitmentId
     ) external payable whenNotPaused returns (uint256 positionId) {
         // Validate inputs
