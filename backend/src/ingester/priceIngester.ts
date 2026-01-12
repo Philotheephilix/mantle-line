@@ -136,10 +136,10 @@ export class PriceIngester extends EventEmitter {
 
     const subscribeMessage = {
       op: 'subscribe',
-      args: ['tickers.MNTUSDT']
+      args: ['tickers.ETHUSDT']
     };
 
-    logger.info('Subscribing to tickers.MNTUSDT');
+    logger.info('Subscribing to tickers.ETHUSDT');
     this.ws.send(JSON.stringify(subscribeMessage));
   }
 
@@ -159,7 +159,7 @@ export class PriceIngester extends EventEmitter {
       
       // Handle subscription confirmation
       if (message.op === 'subscribe' && message.success) {
-        logger.info('Successfully subscribed to tickers.MNTUSDT');
+        logger.info('Successfully subscribed to tickers.ETHUSDT');
         return;
       }
 
@@ -173,7 +173,7 @@ export class PriceIngester extends EventEmitter {
       }
 
       // Handle ticker data
-      if (message.topic === 'tickers.MNTUSDT' && message.data) {
+      if (message.topic === 'tickers.ETHUSDT' && message.data) {
         this.lastMessageTime = Date.now();
         this.processPriceUpdate(message as BybitTickerData);
       } else if (message.topic && message.topic.startsWith('tickers')) {
@@ -191,7 +191,7 @@ export class PriceIngester extends EventEmitter {
   private processPriceUpdate(data: BybitTickerData): void {
     try {
       const price = parseFloat(data.data.lastPrice);
-      const timestamp = data.data.timestamp;
+      const timestamp = (data as any).ts || Date.now();
 
       if (isNaN(price) || price <= 0) {
         logger.warn('Invalid price received', { price: data.data.lastPrice });

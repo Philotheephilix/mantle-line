@@ -53,11 +53,13 @@ export class PriceAggregator extends EventEmitter {
     this.secondTracker.set(currentSecond, priceEntry.price);
     this.lastPrice = priceEntry.price;
 
-    // Log occasionally
-    if (Math.random() < 0.05) { // 5% of updates
-      logger.debug('Price tracked', {
+    // Log every price for debugging
+    if (Math.random()) { // 10% of prices
+      logger.info('Price tracked', {
+        originalTimestamp: priceEntry.timestamp,
         second: currentSecond,
         price: priceEntry.price,
+        date: new Date(priceEntry.timestamp).toISOString(),
         trackedSeconds: this.secondTracker.size
       });
     }
@@ -80,17 +82,34 @@ export class PriceAggregator extends EventEmitter {
     });
 
     // Build array of exactly 60 prices (one per second)
-    const prices: number[] = [];
-    let lastKnownPrice = this.lastPrice || 1.0; // Fallback if no prices yet
-
-    for (let second = windowStart; second < windowEnd; second++) {
+    const prices: number[] = new Array(60);
+    
+    // First pass: Fill in actual prices from secondTracker
+    for (let i = 0; i < 60; i++) {
+      const second = windowStart + i;
       const price = this.secondTracker.get(second);
       if (price !== undefined) {
-        prices.push(price);
-        lastKnownPrice = price;
+        prices[i] = price;
+      }
+    }
+
+    // Second pass: Backward fill - fill gaps by looking ahead for next known price
+    let nextKnownPrice: number | undefined = undefined;
+    for (let i = 59; i >= 0; i--) {
+      if (prices[i] !== undefined) {
+        nextKnownPrice = prices[i];
+      } else if (nextKnownPrice !== undefined) {
+        prices[i] = nextKnownPrice;
+      }
+    }
+
+    // Third pass: Forward fill any remaining gaps at the start
+    let lastKnownPrice = this.lastPrice || 1.0;
+    for (let i = 0; i < 60; i++) {
+      if (prices[i] !== undefined) {
+        lastKnownPrice = prices[i];
       } else {
-        // Use last known price if this second was skipped
-        prices.push(lastKnownPrice);
+        prices[i] = lastKnownPrice;
       }
     }
 
