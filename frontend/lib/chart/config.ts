@@ -4,7 +4,7 @@ export function getChartConfig(isDark: boolean = true, barSpacing: number = 0.5)
   return {
     layout: {
       background: { color: '#0a0a0a' }, // Dark theme like Euphoria
-      textColor: '#ec4899', // Pink text color
+      textColor: '#ec4899', // Pink text color for all axis labels
     } as any,
     grid: {
       vertLines: { color: 'rgba(236, 72, 153, 0.2)', visible: true }, // Pink grid lines
@@ -17,19 +17,20 @@ export function getChartConfig(isDark: boolean = true, barSpacing: number = 0.5)
       },
     },
     timeScale: {
+      visible: true, // Ensure time scale is visible
       timeVisible: true,
       secondsVisible: false,
       borderColor: 'rgba(236, 72, 153, 0.3)',
+      borderVisible: true,
       rightOffset: 25, // Space for drawing on the right
       barSpacing: barSpacing, // Spacing between bars (adjustable)
       fixLeftEdge: false,
       fixRightEdge: false, // Don't fix right edge so we can scroll
-      minBarSpacing: 0.1, // Allow very tight spacing
-      allowShiftVisibleRangeOnWhitespaceClick: true,
-      allowBoldLabels: true,
-      tickMarkFormatter: (time: number) => {
-        const date = new Date(time * 1000);
-        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      minBarSpacing: 1, // Minimum spacing to ensure labels are visible
+      tickMarkFormatter: (time: Time) => {
+        const timestamp = typeof time === 'number' ? time : 0;
+        const date = new Date(timestamp * 1000);
+        return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
       },
     },
     rightPriceScale: {
@@ -78,7 +79,7 @@ export function getAreaSeriesConfig(isDark: boolean = true): Partial<SeriesOptio
     bottomColor: 'rgba(236, 72, 153, 0.0)', // Transparent bottom
     lineWidth: 2,
     priceLineVisible: false,
-    lastValueVisible: true,
+    lastValueVisible: false, // Hide the price label - replaced by Nyan Cat
     crosshairMarkerVisible: true,
     crosshairMarkerRadius: 4,
   } as any;

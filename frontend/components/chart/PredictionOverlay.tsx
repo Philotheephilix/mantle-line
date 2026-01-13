@@ -132,52 +132,64 @@ export function PredictionOverlay({
     [isDrawing, isConfirmed, onFinishDrawing]
   );
 
-  // Convert chart coordinates (time, price) to pixel coordinates (x, y)
+  // Convert prediction point to pixel coordinates, preserving exact drawn shape
   const convertToPixelCoordinates = useCallback(
-    (point: PredictionPoint): { x: number; y: number } | null => {
-      if (!chartRef.current?.chart || !chartRef.current?.series || !svgRef.current) {
+    (point: PredictionPoint, allPoints: PredictionPoint[]): { x: number; y: number } | null => {
+      if (!chartRef.current?.chart || !svgRef.current) {
         return null;
       }
 
       try {
         const timeScale = chartRef.current.chart.timeScale();
-        const series = chartRef.current.series;
         const chartWidth = svgRef.current.clientWidth;
         const chartHeight = svgRef.current.clientHeight;
 
-        // Calculate X from visible time range (works for both current and future times)
-        let xCoord: number | null = null;
+        // If we have original canvas coordinates, use them to preserve exact shape
+        if (point.canvasX !== undefined && point.canvasY !== undefined && allPoints.length > 0) {
+          // Find the X position where the drawing should start (based on first point's time)
+          const firstPoint = allPoints[0];
+          const visibleRange = timeScale.getVisibleRange();
+          
+          if (visibleRange && firstPoint.time) {
+            const timeRangeWidth = (visibleRange.to as number) - (visibleRange.from as number);
+            const firstPointOffset = firstPoint.time - (visibleRange.from as number);
+            const startX = (firstPointOffset / timeRangeWidth) * chartWidth;
+            
+            // Original canvas was 600x200, scale to fit chart while preserving aspect ratio
+            const canvasWidth = 600;
+            const canvasHeight = 200;
+            
+            // Scale factor: fit the drawing within a reasonable portion of the chart
+            // Use the time range to determine X scale
+            const drawingDuration = 60; // 1 minute of drawing
+            const drawingWidthOnChart = (drawingDuration / timeRangeWidth) * chartWidth;
+            const scaleX = drawingWidthOnChart / canvasWidth;
+            
+            // Use same scale for Y to maintain aspect ratio
+            const scaleY = scaleX;
+            
+            // Calculate X: offset from first point's canvas position + start position
+            const relativeCanvasX = point.canvasX - (firstPoint.canvasX ?? 0);
+            const xCoord = startX + (relativeCanvasX * scaleX);
+            
+            // Calculate Y: center the drawing vertically on the chart
+            // Canvas Y=100 (middle) should map to chart center
+            const canvasMidY = 100;
+            const chartMidY = chartHeight / 2;
+            const relativeCanvasY = point.canvasY - canvasMidY;
+            const yCoord = chartMidY + (relativeCanvasY * scaleY);
+            
+            return { x: xCoord, y: yCoord };
+          }
+        }
+
+        // Fallback to time/price based conversion
         const visibleRange = timeScale.getVisibleRange();
         if (visibleRange) {
           const timeRangeWidth = (visibleRange.to as number) - (visibleRange.from as number);
           const timeOffset = point.time - (visibleRange.from as number);
-          xCoord = (timeOffset / timeRangeWidth) * chartWidth;
-        }
-
-        // Calculate Y - first try native conversion
-        let yCoord: number | null = series.priceToCoordinate(point.price) as number | null;
-        
-        // If native conversion fails or returns out-of-bounds, calculate manually
-        if (yCoord === null || yCoord < -100 || yCoord > chartHeight + 100) {
-          // Use currentPrice as anchor point (should be roughly at chart center)
-          if (currentPrice) {
-            // Assume chart shows ±10% range around current price
-            const priceRangePercent = 0.10;
-            const topPrice = currentPrice * (1 + priceRangePercent);
-            const bottomPrice = currentPrice * (1 - priceRangePercent);
-            const priceRange = topPrice - bottomPrice;
-            
-            if (priceRange !== 0) {
-              const priceOffset = topPrice - point.price;
-              yCoord = (priceOffset / priceRange) * chartHeight;
-            }
-          }
-        }
-
-        // Only return valid coordinates
-        if (xCoord !== null && yCoord !== null && !isNaN(xCoord) && !isNaN(yCoord)) {
-          // Clamp Y to reasonable bounds
-          yCoord = Math.max(0, Math.min(chartHeight, yCoord));
+          const xCoord = (timeOffset / timeRangeWidth) * chartWidth;
+          const yCoord = chartHeight / 2; // Default to center if no canvas coords
           return { x: xCoord, y: yCoord };
         }
 
@@ -187,22 +199,17 @@ export function PredictionOverlay({
         return null;
       }
     },
-    [chartRef, currentPrice]
+    [chartRef]
   );
 
   // Generate smooth Catmull-Rom spline curve like the reference image
   const generateSmoothPath = useCallback((points: PredictionPoint[]): string => {
     if (points.length === 0) return '';
 
-    // Convert all points to current pixel coordinates
-    const pixelPoints = points.map(convertToPixelCoordinates).filter(p => p !== null) as { x: number; y: number }[];
-
-    console.log('generateSmoothPath:', { 
-      inputPoints: points.length, 
-      pixelPoints: pixelPoints.length,
-      firstPoint: points[0],
-      firstPixel: pixelPoints[0]
-    });
+    // Convert all points to current pixel coordinates, passing all points for reference
+    const pixelPoints = points
+      .map(p => convertToPixelCoordinates(p, points))
+      .filter(p => p !== null) as { x: number; y: number }[];
 
     if (pixelPoints.length === 0) return '';
     if (pixelPoints.length === 1) return `M ${pixelPoints[0].x},${pixelPoints[0].y}`;
@@ -258,8 +265,10 @@ export function PredictionOverlay({
       selectedPoints = controlPoints;
     }
 
-    // Convert to pixel coordinates
-    return selectedPoints.map(convertToPixelCoordinates).filter(p => p !== null) as { x: number; y: number }[];
+    // Convert to pixel coordinates, passing all points for reference
+    return selectedPoints
+      .map(p => convertToPixelCoordinates(p, points))
+      .filter(p => p !== null) as { x: number; y: number }[];
   }, [convertToPixelCoordinates]);
 
   const controlPoints = getControlPoints(points);

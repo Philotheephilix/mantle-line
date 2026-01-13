@@ -63,14 +63,24 @@ export function usePriceData() {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastTimestampRef = useRef<number>(0);
+  const isMountedRef = useRef<boolean>(true);
 
   useEffect(() => {
+    isMountedRef.current = true;
+
     function connect() {
+      // Don't connect if component is unmounted
+      if (!isMountedRef.current) return;
+
       const wsUrl = "wss://stream.bybit.com/v5/public/spot";
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
       ws.onopen = () => {
+        if (!isMountedRef.current) {
+          ws.close();
+          return;
+        }
         dispatch({ type: 'CONNECTED' });
 
         ws.send(JSON.stringify({
@@ -80,37 +90,43 @@ export function usePriceData() {
       };
 
       ws.onmessage = (event) => {
-          const msg = JSON.parse(event.data);
+        if (!isMountedRef.current) return;
 
-          if (!msg.data || !msg.topic) return;
-          if (!msg.topic.startsWith("tickers.")) return;
+        const msg = JSON.parse(event.data);
+
+        if (!msg.data || !msg.topic) return;
+        if (!msg.topic.startsWith("tickers.")) return;
 
         const t = msg.data;
 
         if (t.lastPrice) {
-            // Ensure unique timestamps by incrementing if same as last
-            let timestamp = Math.floor(Date.now() / 1000);
-            if (timestamp <= lastTimestampRef.current) {
-              timestamp = lastTimestampRef.current + 1;
-            }
-            lastTimestampRef.current = timestamp;
+          // Ensure unique timestamps by incrementing if same as last
+          let timestamp = Math.floor(Date.now() / 1000);
+          if (timestamp <= lastTimestampRef.current) {
+            timestamp = lastTimestampRef.current + 1;
+          }
+          lastTimestampRef.current = timestamp;
 
-            const pricePoint: PricePoint = {
-              time: timestamp,
+          const pricePoint: PricePoint = {
+            time: timestamp,
             value: Number(t.lastPrice),
-            };
+          };
 
-            dispatch({ type: 'ADD_PRICE', payload: pricePoint });
+          dispatch({ type: 'ADD_PRICE', payload: pricePoint });
         }
       };
 
       ws.onclose = () => {
+        if (!isMountedRef.current) return;
         dispatch({ type: 'LOADING' });
-        reconnectTimeoutRef.current = setTimeout(connect, 1000);
+        reconnectTimeoutRef.current = setTimeout(connect, 2000);
       };
 
       ws.onerror = () => {
-        ws.close();
+        // Only close if WebSocket is in OPEN or CONNECTING state
+        if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
+          ws.close();
+        }
       };
     }
 
@@ -118,11 +134,17 @@ export function usePriceData() {
 
     // Cleanup
     return () => {
+      isMountedRef.current = false;
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
       }
       if (wsRef.current) {
-        wsRef.current.close();
+        // Only close if not already closing/closed
+        if (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING) {
+          wsRef.current.close();
+        }
+        wsRef.current = null;
       }
     };
   }, []);

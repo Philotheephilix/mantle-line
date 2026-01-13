@@ -4,8 +4,10 @@ import { useRef, useEffect, useState, useCallback } from 'react';
 import { usePriceData } from '@/hooks/usePriceData';
 import { ChartCanvas, ChartCanvasRef } from './ChartCanvas';
 import { PredictionOverlay } from './PredictionOverlay';
+import { NyanCat, RainbowPathTrail } from './NyanCat';
 import type { PredictionPoint } from '@/types/prediction';
 import type { PricePoint } from '@/types/price';
+import type { Time } from 'lightweight-charts';
 
 interface TradingChartProps {
   isDark?: boolean;
@@ -32,11 +34,114 @@ export function TradingChart({
   barSpacing = 0.5,
 }: TradingChartProps) {
   const chartRef = useRef<ChartCanvasRef>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const { data, isLoading, error } = usePriceData();
   const [overlapPoints, setOverlapPoints] = useState<Array<{ time: number; price: number }>>([]);
+  const [isMounted, setIsMounted] = useState(false);
+  const [nyanPosition, setNyanPosition] = useState<{ x: number; y: number } | null>(null);
+  const [rainbowTrailPoints, setRainbowTrailPoints] = useState<Array<{ x: number; y: number }>>([]);
+  const [isMobile, setIsMobile] = useState(false);
+  
+  // Check for mobile screen size
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 640); // sm breakpoint
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+  
+  // Track client-side mounting to avoid hydration mismatch
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
   
   // Get current time from latest data point
   const currentTime = data.length > 0 ? data[data.length - 1].time : undefined;
+  const currentPrice = data.length > 0 ? data[data.length - 1].value : null;
+
+  // Update Nyan Cat position and rainbow trail based on price data
+  useEffect(() => {
+    if (!chartRef.current?.chart || !chartRef.current?.series || data.length === 0) {
+      return;
+    }
+
+    const updatePositions = () => {
+      try {
+        const chart = chartRef.current?.chart;
+        const series = chartRef.current?.series;
+        const chartContainer = chartRef.current?.container;
+        if (!chart || !series || !chartContainer) return;
+
+        const timeScale = chart.timeScale();
+        
+        // Get the chart container's position relative to its parent
+        // The parent is the div with position: relative that contains ChartCanvas and overlays
+        const chartRect = chartContainer.getBoundingClientRect();
+        const parentElement = chartContainer.parentElement;
+        if (!parentElement) return;
+        
+        const parentRect = parentElement.getBoundingClientRect();
+        const offsetX = chartRect.left - parentRect.left;
+        const offsetY = chartRect.top - parentRect.top;
+        
+        // Convert ALL price points to pixel coordinates for the rainbow trail
+        const trailPoints: Array<{ x: number; y: number }> = [];
+        
+        // Use ALL data points for the full rainbow trail
+        for (const point of data) {
+          const x = timeScale.timeToCoordinate(point.time as Time);
+          const y = series.priceToCoordinate(point.value);
+          
+          // Adjust coordinates to be relative to the parent container (where NyanCat is positioned)
+          if (x !== null && y !== null) {
+            trailPoints.push({ 
+              x: x + offsetX, 
+              y: y + offsetY 
+            });
+          }
+        }
+        
+        setRainbowTrailPoints(trailPoints);
+        
+        // Position cat at the end of the rainbow trail (current price point)
+        // Cat's tail should connect seamlessly to the rainbow
+        if (trailPoints.length > 0) {
+          const lastPoint = trailPoints[trailPoints.length - 1];
+          
+          // Position cat at the last price point - tail connects to rainbow
+          setNyanPosition({
+            x: lastPoint.x,
+            y: lastPoint.y
+          });
+        }
+      } catch (e) {
+        // Chart not ready yet
+      }
+    };
+
+    // Update immediately and on scroll/zoom
+    updatePositions();
+    
+    const interval = setInterval(updatePositions, 50);
+    
+    // Also update on visible range changes
+    const handleVisibleRangeChange = () => {
+      updatePositions();
+    };
+    
+    if (chartRef.current?.chart) {
+      chartRef.current.chart.timeScale().subscribeVisibleLogicalRangeChange(handleVisibleRangeChange);
+    }
+    
+    return () => {
+      clearInterval(interval);
+      if (chartRef.current?.chart) {
+        chartRef.current.chart.timeScale().unsubscribeVisibleLogicalRangeChange(handleVisibleRangeChange);
+      }
+    };
+  }, [data]);
 
 
   // Interpolate prediction curve to get predicted price at a specific time
@@ -142,10 +247,10 @@ export function TradingChart({
 
   if (error) {
     return (
-      <div className="flex items-center justify-center w-full h-[600px] bg-zinc-100 dark:bg-zinc-900 rounded-lg">
-        <div className="text-center">
-          <p className="text-red-500 mb-2">Error loading price data</p>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">{error.message}</p>
+      <div className="flex items-center justify-center w-full h-[250px] sm:h-[300px] md:h-[350px] bg-zinc-900 rounded-lg">
+        <div className="text-center px-4">
+          <p className="text-red-500 mb-2 text-sm">Error loading price data</p>
+          <p className="text-xs text-zinc-400">{error.message}</p>
         </div>
       </div>
     );
@@ -153,54 +258,61 @@ export function TradingChart({
 
   if (isLoading && data.length === 0) {
     return (
-      <div className="flex items-center justify-center w-full h-[600px] bg-zinc-100 dark:bg-zinc-900 rounded-lg">
+      <div className="flex items-center justify-center w-full h-[250px] sm:h-[300px] md:h-[350px] bg-zinc-900 rounded-lg">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4" />
-          <p className="text-zinc-600 dark:text-zinc-400">Loading price data...</p>
+          <div className="animate-spin rounded-full h-8 w-8 sm:h-10 sm:w-10 border-b-2 border-pink-500 mx-auto mb-3" />
+          <p className="text-zinc-400 text-xs sm:text-sm">Loading...</p>
         </div>
       </div>
     );
   }
 
-  const currentPrice = data.length > 0 ? data[data.length - 1].value : null;
-
   return (
-    <div className="relative w-full">
-      {/* Current Price Display - Top Left */}
-      {currentPrice && (
-        <div className="absolute top-4 left-4 z-30 flex items-center gap-2 bg-black/60 backdrop-blur px-3 py-1.5 rounded-lg border border-pink-500/30">
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            className="text-pink-400"
-          >
-            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
-            <path d="M12 6v6l4 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-          </svg>
-          <span className="text-pink-400 font-semibold text-lg">
-            {currentPrice.toFixed(2)}
+    <div ref={containerRef} className="relative w-full">
+      {/* Current Price Display - Top Left (only after hydration to avoid mismatch) */}
+      {isMounted && currentPrice && (
+        <div className="absolute top-2 left-2 sm:top-3 sm:left-3 z-30 flex items-center gap-1.5 bg-black/70 backdrop-blur px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg border border-pink-500/30">
+          <span className="text-pink-400 font-bold text-sm sm:text-base">
+            ${currentPrice.toFixed(4)}
           </span>
         </div>
       )}
 
-            <div className="relative" style={{ position: 'relative', zIndex: 1 }}>
-              <ChartCanvas ref={chartRef} data={data} isDark={isDark} barSpacing={barSpacing} />
-              <PredictionOverlay
-              chartRef={chartRef as React.RefObject<{ chart: any; series: any }>}
-              isDrawing={isDrawing}
-              isConfirmed={isConfirmed}
-              points={currentPoints}
-              overlapPoints={overlapPoints}
-              currentTime={currentTime}
-              currentPrice={currentPrice ?? undefined}
-              selectedMinute={selectedMinute}
-              onStartDrawing={onStartDrawing}
-              onAddPoint={onAddPoint}
-              onFinishDrawing={onFinishDrawing}
-            />
-            </div>
+      <div className="relative" style={{ position: 'relative', zIndex: 1 }}>
+        <ChartCanvas ref={chartRef} data={data} isDark={isDark} barSpacing={barSpacing} />
+        <PredictionOverlay
+          chartRef={chartRef as React.RefObject<{ chart: any; series: any }>}
+          isDrawing={isDrawing}
+          isConfirmed={isConfirmed}
+          points={currentPoints}
+          overlapPoints={overlapPoints}
+          currentTime={currentTime}
+          currentPrice={currentPrice ?? undefined}
+          selectedMinute={selectedMinute}
+          onStartDrawing={onStartDrawing}
+          onAddPoint={onAddPoint}
+          onFinishDrawing={onFinishDrawing}
+        />
+        
+        {/* Rainbow trail - ends at the cat's pop-tart body like original Nyan Cat */}
+        {isMounted && rainbowTrailPoints.length > 1 && nyanPosition && (
+          <RainbowPathTrail 
+            points={rainbowTrailPoints} 
+            catX={nyanPosition.x} 
+            strokeWidth={isMobile ? 10 : 14} 
+          />
+        )}
+        
+        {/* Nyan Cat at current price - rainbow connects to pop-tart body */}
+        {isMounted && nyanPosition && (
+          <NyanCat 
+            x={nyanPosition.x} 
+            y={nyanPosition.y} 
+            size={isMobile ? 0.35 : 0.5} 
+            isMobile={isMobile}
+          />
+        )}
+      </div>
 
       {/* Overlap counter */}
       {overlapPoints.length > 0 && (

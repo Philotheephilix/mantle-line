@@ -20,6 +20,7 @@ interface ChartCanvasProps {
 export interface ChartCanvasRef {
   chart: IChartApi | null;
   series: ISeriesApi<any> | null;
+  container: HTMLDivElement | null;
 }
 
 export const ChartCanvas = forwardRef<ChartCanvasRef, ChartCanvasProps>(
@@ -32,19 +33,24 @@ export const ChartCanvas = forwardRef<ChartCanvasRef, ChartCanvasProps>(
     const lastProcessedTimeRef = useRef<number | null>(null);
     const initializedRef = useRef(false);
 
-    // Expose chart and series to parent
+    // Expose chart, series, and container to parent
     useImperativeHandle(ref, () => ({
       chart: chartRef.current,
       series: seriesRef.current,
+      container: containerRef.current,
     }));
 
     // Initialize chart
     useEffect(() => {
       if (!containerRef.current) return;
 
+      // Get actual container dimensions
+      const containerHeight = containerRef.current.clientHeight || 280;
+      const containerWidth = containerRef.current.clientWidth;
+
       const chart = createChart(containerRef.current, {
-        width: containerRef.current.clientWidth,
-        height: 500,
+        width: containerWidth,
+        height: containerHeight,
         ...getChartConfig(isDark, barSpacing),
       });
 
@@ -62,12 +68,17 @@ export const ChartCanvas = forwardRef<ChartCanvasRef, ChartCanvasProps>(
 
       // Handle resize
       const handleResize = () => {
-        if (containerRef.current) {
-          chart.resize(containerRef.current.clientWidth, 500);
+        if (containerRef.current && chartRef.current) {
+          const newHeight = containerRef.current.clientHeight || 280;
+          const newWidth = containerRef.current.clientWidth;
+          chartRef.current.resize(newWidth, newHeight);
         }
       };
 
       window.addEventListener('resize', handleResize);
+      
+      // Also trigger resize after a small delay to catch CSS layout changes
+      setTimeout(handleResize, 100);
 
       return () => {
         window.removeEventListener('resize', handleResize);
@@ -177,8 +188,11 @@ export const ChartCanvas = forwardRef<ChartCanvasRef, ChartCanvasProps>(
     return (
       <div
         ref={containerRef}
-        className="w-full h-[500px]"
-        style={{ position: 'relative', zIndex: 1 }}
+        className="w-full h-[250px] sm:h-[300px] md:h-[350px]"
+        style={{ 
+          position: 'relative', 
+          zIndex: 1,
+        }}
       />
     );
   }
