@@ -1,10 +1,12 @@
 'use client';
 
 import { useState } from 'react';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { TradingChart } from '@/components/chart/TradingChart';
 import { PatternDrawingBox } from '@/components/chart/PatternDrawingBox';
 import { usePredictionDrawing } from '@/hooks/usePredictionDrawing';
 import { usePriceData } from '@/hooks/usePriceData';
+import MeshGradients from '@/components/MeshGradients';
 
 // Props are intentionally not used - they're passed by Next.js but we don't need them
 export default function PredictPage(_props: { params?: unknown; searchParams?: unknown }) {
@@ -93,27 +95,17 @@ export default function PredictPage(_props: { params?: unknown; searchParams?: u
   };
 
   return (
-    <div
-      className="min-h-screen text-white pb-24 relative overflow-hidden"
-      style={{
-        backgroundImage: "url('/92338017c079bea4f1250ed4a3056117.gif')",
-        backgroundSize: 'cover',
-        backgroundRepeat: 'no-repeat',
-        backgroundPosition: 'center top',
-      }}
-    >
-      {/* Overlay for readability */}
-      <div className="absolute inset-0 bg-black/60 pointer-events-none" />
-
-      {/* Subtle glows atop gif */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-[-10%] left-1/3 w-[420px] h-[420px] bg-amber-600/12 rounded-full blur-[140px]" />
-        <div className="absolute bottom-[-5%] right-1/4 w-[360px] h-[360px] bg-red-700/10 rounded-full blur-[120px]" />
-        <div className="absolute top-1/2 left-1/2 w-[260px] h-[260px] bg-yellow-500/10 rounded-full blur-[100px]" />
+    <div className="min-h-screen text-white pb-24 relative overflow-hidden">
+      {/* Mesh Gradient Background */}
+      <div className="fixed inset-0 z-0">
+        <MeshGradients />
       </div>
 
+      {/* Overlay for readability */}
+      <div className="fixed inset-0 bg-black/60 pointer-events-none z-[1]" />
+
       {/* Header - God Casino style (no chart changes) */}
-      <header className="sticky top-0 z-50 backdrop-blur-xl bg-[#0c0a06]/85 border-b border-amber-700/40 shadow-[0_2px_0_0_rgba(0,0,0,0.6)]">
+      <header className="sticky top-0 z-50 backdrop-blur-xl bg-[#0c0a06]/85 border-b border-amber-700/40 shadow-[0_2px_0_0_rgba(0,0,0,0.6)] relative">
         <div className="px-4 py-3 sm:py-4 max-w-6xl mx-auto">
           <div className="flex items-center justify-between gap-3">
             {/* Logo with divine glow */}
@@ -134,29 +126,112 @@ export default function PredictPage(_props: { params?: unknown; searchParams?: u
 
             {/* Right side - Connect Wallet & Status */}
             <div className="flex items-center gap-2 sm:gap-3">
-              {/* Connect Wallet Button - Pixelated */}
-              <button
-                className="relative px-3 py-2 sm:px-4 sm:py-2.5 border-3 border-amber-700/60 bg-[#0f0c14] rounded-lg shadow-[0_2px_0_0_rgba(0,0,0,0.6)] hover:translate-y-[-1px] active:translate-y-[1px] active:shadow-none transition-all duration-150 group"
-                style={{
-                  imageRendering: 'pixelated',
-                }}
-              >
-                {/* Pixel art inner border */}
-                <div className="absolute inset-[3px] border border-dashed border-amber-600/30 rounded-md pointer-events-none" />
+              {/* Connect Wallet Button - RainbowKit */}
+              <div className="[&_button]:relative [&_button]:px-3 [&_button]:py-2 [&_button]:sm:px-4 [&_button]:sm:py-2.5 [&_button]:border-3 [&_button]:border-amber-700/60 [&_button]:bg-[#0f0c14] [&_button]:rounded-lg [&_button]:shadow-[0_2px_0_0_rgba(0,0,0,0.6)] [&_button]:hover:translate-y-[-1px] [&_button]:active:translate-y-[1px] [&_button]:active:shadow-none [&_button]:transition-all [&_button]:duration-150 [&_button]:text-xs [&_button]:sm:text-sm [&_button]:font-bold [&_button]:text-amber-200 [&_button]:uppercase [&_button]:tracking-wider [&_button]:font-mono">
+                <ConnectButton.Custom>
+                  {({
+                    account,
+                    chain,
+                    openAccountModal,
+                    openChainModal,
+                    openConnectModal,
+                    authenticationStatus,
+                    mounted,
+                  }) => {
+                    const ready = mounted && authenticationStatus !== 'loading';
+                    const connected =
+                      ready &&
+                      account &&
+                      chain &&
+                      (!authenticationStatus ||
+                        authenticationStatus === 'authenticated');
 
-                {/* Glow effect */}
-                <div className="absolute inset-0 bg-gradient-to-r from-amber-500/0 via-amber-500/20 to-amber-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg" />
+                    return (
+                      <div
+                        {...(!ready && {
+                          'aria-hidden': true,
+                          style: {
+                            opacity: 0,
+                            pointerEvents: 'none',
+                            userSelect: 'none',
+                          },
+                        })}
+                      >
+                        {(() => {
+                          if (!connected) {
+                            return (
+                              <button
+                                onClick={openConnectModal}
+                                type="button"
+                                className="relative group"
+                                style={{
+                                  imageRendering: 'pixelated',
+                                }}
+                              >
+                                {/* Pixel art inner border */}
+                                <div className="absolute inset-[3px] border border-dashed border-amber-600/30 rounded-md pointer-events-none" />
 
-                {/* Button content */}
-                <div className="relative flex items-center gap-2">
-                  <div className="w-5 h-5 sm:w-6 sm:h-6 rounded border-2 border-amber-600/50 bg-gradient-to-br from-amber-400 to-yellow-600 flex items-center justify-center">
-                    <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-sm bg-amber-900" />
-                  </div>
-                  <span className="text-xs sm:text-sm font-bold text-amber-200 uppercase tracking-wider" style={{ fontFamily: 'monospace' }}>
-                    Connect
-                  </span>
-                </div>
-              </button>
+                                {/* Glow effect */}
+                                <div className="absolute inset-0 bg-gradient-to-r from-amber-500/0 via-amber-500/20 to-amber-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg" />
+
+                                {/* Button content */}
+                                <div className="relative flex items-center gap-2">
+                                  <div className="w-5 h-5 sm:w-6 sm:h-6 rounded border-2 border-amber-600/50 bg-gradient-to-br from-amber-400 to-yellow-600 flex items-center justify-center">
+                                    <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-sm bg-amber-900" />
+                                  </div>
+                                  <span>Connect</span>
+                                </div>
+                              </button>
+                            );
+                          }
+
+                          if (chain.unsupported) {
+                            return (
+                              <button
+                                onClick={openChainModal}
+                                type="button"
+                                className="relative px-3 py-2 sm:px-4 sm:py-2.5 border-3 border-red-700/60 bg-[#0f0c14] rounded-lg shadow-[0_2px_0_0_rgba(0,0,0,0.6)] hover:translate-y-[-1px] active:translate-y-[1px] active:shadow-none transition-all duration-150 text-xs sm:text-sm font-bold text-red-200 uppercase tracking-wider font-mono"
+                              >
+                                Wrong network
+                              </button>
+                            );
+                          }
+
+                          return (
+                            <button
+                              onClick={openAccountModal}
+                              type="button"
+                              className="relative group"
+                              style={{
+                                imageRendering: 'pixelated',
+                              }}
+                            >
+                              {/* Pixel art inner border */}
+                              <div className="absolute inset-[3px] border border-dashed border-amber-600/30 rounded-md pointer-events-none" />
+
+                              {/* Glow effect */}
+                              <div className="absolute inset-0 bg-gradient-to-r from-amber-500/0 via-amber-500/20 to-amber-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg" />
+
+                              {/* Button content */}
+                              <div className="relative flex items-center gap-2">
+                                <div className="w-5 h-5 sm:w-6 sm:h-6 rounded border-2 border-amber-600/50 bg-gradient-to-br from-amber-400 to-yellow-600 flex items-center justify-center">
+                                  <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-sm bg-amber-900" />
+                                </div>
+                                <span className="text-xs sm:text-sm font-bold text-amber-200 uppercase tracking-wider font-mono">
+                                  {account.displayName}
+                                  {account.displayBalance
+                                    ? ` (${account.displayBalance})`
+                                    : ''}
+                                </span>
+                              </div>
+                            </button>
+                          );
+                        })()}
+                      </div>
+                    );
+                  }}
+                </ConnectButton.Custom>
+              </div>
 
               {/* Status badge */}
               {currentPoints.length > 0 && (
@@ -255,7 +330,7 @@ export default function PredictPage(_props: { params?: unknown; searchParams?: u
       </div>
 
       {/* Bottom Controls - God casino bar (chart untouched) */}
-      <div className="fixed bottom-0 left-0 right-0 z-40">
+      <div className="fixed bottom-0 left-0 right-0 z-40 relative">
         <div className="absolute inset-0 bg-gradient-to-t from-[#050308] via-[#07050d]/95 to-transparent" />
         <div className="relative px-4 py-4 sm:py-5 border-t border-amber-700/30 shadow-[0_-2px_0_0_rgba(0,0,0,0.6)]">
           <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">

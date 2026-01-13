@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, MouseEvent, TouchEvent, useCallback } from 'react';
+import { useRef, useState, MouseEvent, TouchEvent, useCallback, useEffect } from 'react';
 import { SlotMachineLeverButton } from '@/components/ui/SlotMachineLever';
 
 interface PatternPoint {
@@ -14,6 +14,7 @@ interface PatternDrawingBoxProps {
 
 export function PatternDrawingBox({ onPatternComplete }: PatternDrawingBoxProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const animationFrameRef = useRef<number | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [points, setPoints] = useState<PatternPoint[]>([]);
   const [selectedOffset, setSelectedOffset] = useState(1);
@@ -79,11 +80,112 @@ export function PatternDrawingBox({ onPatternComplete }: PatternDrawingBoxProps)
     setPoints(prev => [...prev, coords]);
   }, [isDrawing, points, getCanvasCoordinates]);
 
+  const redrawCanvas = useCallback((pointsToDraw: PatternPoint[]) => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (!ctx || !canvas || pointsToDraw.length === 0) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (pointsToDraw.length === 1) {
+      // Draw single point
+      ctx.fillStyle = '#fbbf24';
+      ctx.beginPath();
+      ctx.arc(pointsToDraw[0].x, pointsToDraw[0].y, 4, 0, 2 * Math.PI);
+      ctx.fill();
+      return;
+    }
+
+    // Draw path
+    ctx.strokeStyle = '#fbbf24';
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    ctx.beginPath();
+    ctx.moveTo(pointsToDraw[0].x, pointsToDraw[0].y);
+    for (let i = 1; i < pointsToDraw.length; i++) {
+      ctx.lineTo(pointsToDraw[i].x, pointsToDraw[i].y);
+    }
+    ctx.stroke();
+  }, []);
+
+  // Easing function for smooth animation (ease-out cubic)
+  const easeOutCubic = useCallback((t: number): number => {
+    return 1 - Math.pow(1 - t, 3);
+  }, []);
+
   const finishDrawing = useCallback(() => {
     if (isDrawing && points.length > 1) {
+      const canvas = canvasRef.current;
+      if (!canvas) {
+        setIsDrawing(false);
+        return;
+      }
+
+      // Calculate the current x range of the drawing
+      const xValues = points.map(p => p.x);
+      const minX = Math.min(...xValues);
+      const maxX = Math.max(...xValues);
+      const xRange = maxX - minX;
+
+      // If the drawing already spans the full width (or very close), don't stretch
+      if (xRange < 10) {
+        setIsDrawing(false);
+        return;
+      }
+
+      // Calculate stretched points
+      const canvasWidth = canvas.width;
+      const originalPoints = [...points];
+      const stretchedPoints: PatternPoint[] = points.map(point => {
+        // Normalize x to 0-1 range based on current min/max
+        const normalizedX = (point.x - minX) / xRange;
+        // Scale to full canvas width
+        const stretchedX = normalizedX * canvasWidth;
+        // Keep y coordinate unchanged
+        return { x: stretchedX, y: point.y };
+      });
+
       setIsDrawing(false);
+
+      // Animate the stretch transition
+      const duration = 400; // milliseconds
+      const startTime = performance.now();
+
+      const animate = (currentTime: number) => {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const easedProgress = easeOutCubic(progress);
+
+        // Interpolate between original and stretched points
+        const animatedPoints: PatternPoint[] = originalPoints.map((point, index) => {
+          const originalX = point.x;
+          const stretchedX = stretchedPoints[index].x;
+          const animatedX = originalX + (stretchedX - originalX) * easedProgress;
+          return { x: animatedX, y: point.y };
+        });
+
+        // Redraw canvas with animated points
+        redrawCanvas(animatedPoints);
+
+        if (progress < 1) {
+          animationFrameRef.current = requestAnimationFrame(animate);
+        } else {
+          // Animation complete - set final stretched points
+          setPoints(stretchedPoints);
+          animationFrameRef.current = null;
+        }
+      };
+
+      // Cancel any existing animation
+      if (animationFrameRef.current !== null) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+
+      animationFrameRef.current = requestAnimationFrame(animate);
     }
-  }, [isDrawing, points]);
+  }, [isDrawing, points, redrawCanvas, easeOutCubic]);
 
   // Mouse events
   const handleMouseDown = (e: MouseEvent<HTMLCanvasElement>) => {
@@ -120,6 +222,11 @@ export function PatternDrawingBox({ onPatternComplete }: PatternDrawingBoxProps)
   };
 
   const handleClear = () => {
+    // Cancel any ongoing animation
+    if (animationFrameRef.current !== null) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
     setPoints([]);
     setIsDrawing(false);
     const canvas = canvasRef.current;
@@ -130,6 +237,15 @@ export function PatternDrawingBox({ onPatternComplete }: PatternDrawingBoxProps)
       }
     }
   };
+
+  // Cleanup animation on unmount
+  useEffect(() => {
+    return () => {
+      if (animationFrameRef.current !== null) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, []);
 
   return (
     <div className="relative group">
@@ -158,8 +274,8 @@ export function PatternDrawingBox({ onPatternComplete }: PatternDrawingBoxProps)
           <canvas
             ref={canvasRef}
             width={600}
-            height={200}
-            className="relative w-full h-[100px] sm:h-[130px] bg-gradient-to-b from-[#0a0805] to-[#050402] rounded-xl border border-amber-700/30 cursor-crosshair touch-none shadow-[inset_0_2px_0_0_rgba(0,0,0,0.6)]"
+            height={300}
+            className="relative w-full h-[150px] sm:h-[200px] bg-gradient-to-b from-[#0a0805] to-[#050402] rounded-xl border border-amber-700/30 cursor-crosshair touch-none shadow-[inset_0_2px_0_0_rgba(0,0,0,0.6)]"
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={finishDrawing}
