@@ -22,7 +22,7 @@ export function getChartConfig(isDark: boolean = true, barSpacing: number = 0.5)
       secondsVisible: false,
       borderColor: 'rgba(236, 72, 153, 0.3)',
       borderVisible: true,
-      rightOffset: 25, // Space for drawing on the right
+      rightOffset: 120, // Increased space for future predictions (up to 5 minutes = 300 seconds, but 120 bars gives about 3-4 minutes depending on barSpacing)
       barSpacing: barSpacing, // Spacing between bars (adjustable)
       fixLeftEdge: false,
       fixRightEdge: false, // Don't fix right edge so we can scroll

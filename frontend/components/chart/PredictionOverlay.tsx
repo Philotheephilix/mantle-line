@@ -2,7 +2,7 @@
 
 import { useRef, useCallback, MouseEvent, useState, useEffect } from 'react';
 import type { IChartApi, ISeriesApi, Time } from 'lightweight-charts';
-import type { PredictionPoint } from '@/types/prediction';
+import type { PredictionPoint, DirectionalMatch } from '@/types/prediction';
 
 interface PredictionOverlayProps {
   chartRef: React.RefObject<{
@@ -13,6 +13,7 @@ interface PredictionOverlayProps {
   isConfirmed: boolean;
   points: PredictionPoint[];
   overlapPoints?: Array<{ time: number; price: number }>;
+  directionalMatches?: DirectionalMatch[];
   currentTime?: number; // Current time from latest price data
   currentPrice?: number; // Current price for calculating Y coordinates
   selectedMinute?: number | null; // Which future minute to draw on
@@ -27,6 +28,7 @@ export function PredictionOverlay({
   isConfirmed,
   points,
   overlapPoints = [],
+  directionalMatches = [],
   currentTime,
   currentPrice,
   selectedMinute,
@@ -489,6 +491,69 @@ export function PredictionOverlay({
                     fill="#fbbf24"
                     stroke="#0a0a0a"
                     strokeWidth={2}
+                  />
+                </g>
+              );
+            } catch (error) {
+              return null;
+            }
+          })}
+        </>
+      )}
+
+      {/* Directional Match Points - Green "+" Symbols */}
+      {directionalMatches.length > 0 && chartRef.current?.chart && chartRef.current?.series && (
+        <>
+          {directionalMatches.map((match, index) => {
+            try {
+              const timeScale = chartRef.current!.chart!.timeScale();
+              const x = timeScale.timeToCoordinate(match.time as Time);
+              const y = chartRef.current!.series!.priceToCoordinate(match.price);
+
+              if (x === null || y === null) return null;
+
+              return (
+                <g key={`directional-match-${index}`}>
+                  {/* Pulsing green glow */}
+                  <circle
+                    cx={x}
+                    cy={y}
+                    r={16}
+                    fill="rgba(34, 197, 94, 0.15)"
+                    className="animate-pulse"
+                  />
+
+                  {/* "+" Symbol */}
+                  {/* Vertical line */}
+                  <line
+                    x1={x}
+                    y1={y - 10}
+                    x2={x}
+                    y2={y + 10}
+                    stroke="#22c55e"
+                    strokeWidth={3}
+                    strokeLinecap="round"
+                  />
+                  {/* Horizontal line */}
+                  <line
+                    x1={x - 10}
+                    y1={y}
+                    x2={x + 10}
+                    y2={y}
+                    stroke="#22c55e"
+                    strokeWidth={3}
+                    strokeLinecap="round"
+                  />
+
+                  {/* Outer circle */}
+                  <circle
+                    cx={x}
+                    cy={y}
+                    r={12}
+                    fill="none"
+                    stroke="#22c55e"
+                    strokeWidth={2.5}
+                    opacity={0.8}
                   />
                 </g>
               );

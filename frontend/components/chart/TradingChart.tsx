@@ -5,7 +5,7 @@ import { usePriceData } from '@/hooks/usePriceData';
 import { ChartCanvas, ChartCanvasRef } from './ChartCanvas';
 import { PredictionOverlay } from './PredictionOverlay';
 import { NyanCat, RainbowPathTrail } from './NyanCat';
-import type { PredictionPoint } from '@/types/prediction';
+import type { PredictionPoint, DirectionalMatch, DirectionalScore, PNLConfig } from '@/types/prediction';
 import type { PricePoint } from '@/types/price';
 import type { Time } from 'lightweight-charts';
 
@@ -41,6 +41,25 @@ export function TradingChart({
   const [nyanPosition, setNyanPosition] = useState<{ x: number; y: number } | null>(null);
   const [rainbowTrailPoints, setRainbowTrailPoints] = useState<Array<{ x: number; y: number }>>([]);
   const [isMobile, setIsMobile] = useState(false);
+
+  // Directional accuracy state
+  const [directionalMatches, setDirectionalMatches] = useState<DirectionalMatch[]>([]);
+  const [directionalScore, setDirectionalScore] = useState<DirectionalScore>({
+    correctDirections: 0,
+    totalDirections: 0,
+    accuracy: 0,
+    pnl: 0,
+    fee: 0,
+    finalAmount: 0,
+    maxProfit: 0,
+  });
+
+  // PNL configuration - can be made user-configurable later
+  const [pnlConfig] = useState<PNLConfig>({
+    amount: 10,        // 10 ETH default (MIN_AMOUNT)
+    leverage: 10,      // 10x default leverage
+    feePercentage: 200 // 2% fee (matches backend)
+  });
   
   // Check for mobile screen size
   useEffect(() => {
@@ -172,6 +191,126 @@ export function TradingChart({
     return null;
   }, []);
 
+  // Calculate directional accuracy - mirrors backend formula
+  const calculateDirectionalAccuracy = useCallback(() => {
+    if (currentPoints.length < 2 || data.length === 0 || currentTime === undefined) {
+      setDirectionalMatches([]);
+      setDirectionalScore({
+        correctDirections: 0,
+        totalDirections: 0,
+        accuracy: 0,
+        pnl: 0,
+        fee: 0,
+        finalAmount: 0,
+        maxProfit: 0,
+      });
+      return;
+    }
+
+    // Sort prediction points by time
+    const sortedPredictionPoints = [...currentPoints].sort((a, b) => a.time - b.time);
+
+    if (sortedPredictionPoints.length < 2) {
+      return;
+    }
+
+    // Helper: Get direction (mirrors backend logic)
+    const getDirection = (price1: number, price2: number): number => {
+      if (price2 > price1) return 1;   // UP
+      if (price2 < price1) return -1;  // DOWN
+      return 0;                         // UNCHANGED
+    };
+
+    // Helper: Find actual price at timestamp (with tolerance)
+    const getActualPrice = (targetTime: number): number | undefined => {
+      return data.find(p => Math.abs(p.time - targetTime) <= 1)?.value;
+    };
+
+    const matches: DirectionalMatch[] = [];
+    let correctCount = 0;
+    let totalCount = 0;
+
+    // Compare consecutive prediction points (mirrors backend's 59 comparisons)
+    for (let i = 0; i < sortedPredictionPoints.length - 1; i++) {
+      const predPoint1 = sortedPredictionPoints[i];
+      const predPoint2 = sortedPredictionPoints[i + 1];
+
+      // Calculate predicted direction
+      const predictedDirection = getDirection(predPoint1.price, predPoint2.price);
+
+      // Find actual prices at these timestamps
+      const actualPrice1 = getActualPrice(predPoint1.time);
+      const actualPrice2 = getActualPrice(predPoint2.time);
+
+      // Only compare if we have both actual prices (time has passed)
+      if (actualPrice1 !== undefined && actualPrice2 !== undefined) {
+        const actualDirection = getDirection(actualPrice1, actualPrice2);
+
+        totalCount++;
+
+        // Check if directions match
+        const isMatch = predictedDirection === actualDirection;
+        if (isMatch) {
+          correctCount++;
+
+          // Store match point for visualization (midpoint)
+          const matchTime = (predPoint1.time + predPoint2.time) / 2;
+          const matchPrice = (actualPrice1 + actualPrice2) / 2;
+
+          matches.push({
+            time: matchTime,
+            price: matchPrice,
+            predictedDirection,
+            actualDirection,
+          });
+        }
+      }
+    }
+
+    // Calculate accuracy
+    const accuracy = totalCount > 0 ? correctCount / totalCount : 0;
+
+    // Calculate PNL using backend formula
+    if (totalCount > 0 && data.length > 0) {
+      // Get initial and final actual prices
+      const initialPrice = data[0].value;
+      const finalPrice = data[data.length - 1].value;
+
+      // Position size calculation
+      const positionSize = pnlConfig.amount / initialPrice;
+
+      // Price movement (absolute)
+      const priceMovement = Math.abs(finalPrice - initialPrice);
+
+      // Max profit calculation
+      const maxProfit = priceMovement * positionSize * pnlConfig.leverage;
+
+      // PNL formula: (2 × Acc - 1) × Pₘₐₓ
+      // 50% accuracy = 0 PNL (breakeven)
+      // 100% accuracy = +Pₘₐₓ (full profit)
+      // 0% accuracy = -Pₘₐₓ (full loss)
+      const pnl = (2 * accuracy - 1) * maxProfit;
+
+      // Fee calculation (only on profits)
+      const fee = pnl > 0 ? (pnl * pnlConfig.feePercentage) / 10000 : 0;
+
+      // Final amount
+      const finalAmount = pnlConfig.amount + pnl - fee;
+
+      setDirectionalScore({
+        correctDirections: correctCount,
+        totalDirections: totalCount,
+        accuracy,
+        pnl,
+        fee,
+        finalAmount: Math.max(0, finalAmount),
+        maxProfit,
+      });
+    }
+
+    setDirectionalMatches(matches);
+  }, [currentPoints, data, currentTime, pnlConfig]);
+
   // Detect overlap between prediction and actual prices
   useEffect(() => {
     if (currentPoints.length === 0 || data.length === 0 || currentTime === undefined) {
@@ -245,6 +384,11 @@ export function TradingChart({
     setOverlapPoints(overlaps);
   }, [currentPoints, data, currentTime, interpolatePrediction]);
 
+  // Calculate directional accuracy in real-time
+  useEffect(() => {
+    calculateDirectionalAccuracy();
+  }, [calculateDirectionalAccuracy, currentPoints, data, currentTime]);
+
   if (error) {
     return (
       <div className="flex items-center justify-center w-full h-[250px] sm:h-[300px] md:h-[350px] bg-zinc-900 rounded-lg">
@@ -286,6 +430,7 @@ export function TradingChart({
           isConfirmed={isConfirmed}
           points={currentPoints}
           overlapPoints={overlapPoints}
+          directionalMatches={directionalMatches}
           currentTime={currentTime}
           currentPrice={currentPrice ?? undefined}
           selectedMinute={selectedMinute}
@@ -314,10 +459,41 @@ export function TradingChart({
         )}
       </div>
 
-      {/* Overlap counter */}
-      {overlapPoints.length > 0 && (
-        <div className="absolute bottom-4 left-4 bg-pink-500/90 backdrop-blur px-4 py-2 rounded-lg text-white text-sm font-medium shadow-lg">
-          ✓ {overlapPoints.length} match{overlapPoints.length !== 1 ? 'es' : ''}
+      {/* Real-time Score Display - matches backend formula */}
+      {directionalScore.totalDirections > 0 && (
+        <div className="absolute bottom-4 left-4 flex flex-col gap-2 z-30">
+          {/* Directional Accuracy Score */}
+          <div className="bg-gradient-to-r from-green-600/90 to-emerald-600/90 backdrop-blur px-4 py-2 rounded-lg text-white shadow-lg border border-green-400/30">
+            <div className="text-xs font-medium opacity-90 uppercase tracking-wide">Directional Accuracy</div>
+            <div className="text-lg font-bold">
+              {directionalScore.correctDirections}/{directionalScore.totalDirections}
+              <span className="text-sm ml-2">({(directionalScore.accuracy * 100).toFixed(1)}%)</span>
+            </div>
+          </div>
+
+          {/* PNL Display with color coding */}
+          <div className={`backdrop-blur px-4 py-2 rounded-lg text-white shadow-lg border ${
+            directionalScore.pnl >= 0
+              ? 'bg-gradient-to-r from-green-600/90 to-emerald-600/90 border-green-400/30'
+              : 'bg-gradient-to-r from-red-600/90 to-rose-600/90 border-red-400/30'
+          }`}>
+            <div className="text-xs opacity-90 uppercase tracking-wide">Estimated P&L</div>
+            <div className="text-lg font-bold">
+              {directionalScore.pnl >= 0 ? '+' : ''}
+              {directionalScore.pnl.toFixed(4)} ETH
+            </div>
+            <div className="text-xs opacity-75 mt-0.5">
+              Fee: {directionalScore.fee.toFixed(4)} ETH
+            </div>
+          </div>
+
+          {/* Max Profit Info */}
+          <div className="bg-amber-600/90 backdrop-blur px-4 py-2 rounded-lg text-white text-xs shadow-lg border border-amber-400/30">
+            <div className="opacity-90">Max Profit: {directionalScore.maxProfit.toFixed(4)} ETH</div>
+            <div className="opacity-75 mt-1">
+              {pnlConfig.amount} ETH × {pnlConfig.leverage}x leverage
+            </div>
+          </div>
         </div>
       )}
     </div>

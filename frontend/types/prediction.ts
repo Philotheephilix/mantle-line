@@ -20,3 +20,26 @@ export interface DrawingState {
   currentPoints: PredictionPoint[];
   confirmedPath: PredictionPath | null;
 }
+
+export interface DirectionalMatch {
+  time: number;
+  price: number;
+  predictedDirection: number;  // 1 = up, -1 = down, 0 = unchanged
+  actualDirection: number;
+}
+
+export interface DirectionalScore {
+  correctDirections: number;
+  totalDirections: number;
+  accuracy: number;              // 0 to 1
+  pnl: number;                   // in ETH/tokens
+  fee: number;
+  finalAmount: number;
+  maxProfit: number;
+}
+
+export interface PNLConfig {
+  amount: number;                // Deposit amount in ETH
+  leverage: number;              // 1-2500x
+  feePercentage: number;         // 200 = 2%
+}

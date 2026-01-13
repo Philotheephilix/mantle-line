@@ -49,7 +49,9 @@ export default function PredictPage(_props: { params?: unknown; searchParams?: u
     const minPrice = currentPrice - priceRange;
     const maxPrice = currentPrice + priceRange;
 
-    const futureStartTime = currentTime + (offsetMinutes * 60);
+    // Use current REAL time instead of data timestamp
+    const nowInSeconds = Math.floor(Date.now() / 1000);
+    const futureStartTime = nowInSeconds + (offsetMinutes * 60);
 
     const maxPoints = 15;
     const step = Math.max(1, Math.floor(points.length / maxPoints));
