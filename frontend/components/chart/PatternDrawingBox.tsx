@@ -40,7 +40,7 @@ export function PatternDrawingBox({ onPatternComplete }: PatternDrawingBoxProps)
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d');
     if (!ctx || !canvas) return;
-    
+
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = '#fbbf24';
     ctx.beginPath();
@@ -143,11 +143,8 @@ export function PatternDrawingBox({ onPatternComplete }: PatternDrawingBoxProps)
             <div className="w-8 h-8 flex items-center justify-center bg-gradient-to-br from-amber-500 to-yellow-600 rounded-lg shadow-lg shadow-amber-500/20">
               <span className="text-sm">✏️</span>
             </div>
-            <div>
-              <h3 className="text-sm font-bold text-white">Draw Prediction</h3>
-              <p className="text-[10px] text-amber-400/60">Sketch your forecast</p>
-            </div>
           </div>
+          <h3 className="text-xl font-bold text-white">Draw your futures</h3>
           {points.length > 0 && (
             <span className="text-[10px] font-bold text-amber-400 bg-amber-500/20 px-2.5 py-1 rounded-full border border-amber-500/30">
               {points.length} pts
@@ -189,19 +186,16 @@ export function PatternDrawingBox({ onPatternComplete }: PatternDrawingBoxProps)
 
         {/* Time Selector - Pixel Art Casino Chips */}
         <div className="mb-3">
-          <p className="text-[10px] text-amber-400/60 font-medium mb-2 uppercase tracking-wider">Select Timeframe</p>
-          <div className="flex gap-0.5 sm:gap-2 md:gap-3 justify-center sm:justify-start py-1">
+          <p className="text-[15px] text-amber-400/60 font-medium mb-2 uppercase tracking-wider">Choose time horizon and resolve your drawing</p>
+          <div className="flex gap-0.5 sm:gap-2 md:gap-3 justify-between">
             {[1, 2, 3, 4, 5].map((min) => (
               <button
                 key={min}
                 onClick={() => setSelectedOffset(min)}
                 className={`
-                  relative flex-shrink-0
-                  w-[60px] h-[60px]
-                  sm:w-[100px] sm:h-[100px]
-                  md:w-[140px] md:h-[140px]
-                  lg:w-[180px] lg:h-[180px]
-                  xl:w-[200px] xl:h-[200px]
+                  relative flex-shrink-0 -my-5
+                  w-[60px] h-[60px] 
+                  md:w-[160px] md:h-[160px] 
                   transition-all duration-200
                   ${selectedOffset === min
                     ? 'drop-shadow-[0_0_20px_rgba(245,158,11,0.9)] scale-110'
@@ -231,7 +225,7 @@ export function PatternDrawingBox({ onPatternComplete }: PatternDrawingBoxProps)
         {/* Action Buttons - Slot Machine style */}
         <div className="flex items-center gap-3">
           <SlotMachineLeverButton
-            text="APPLY"
+            text="RESOLV"
             onClick={handleApply}
             disabled={points.length < 2}
             className="flex-1"

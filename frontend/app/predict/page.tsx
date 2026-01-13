@@ -121,8 +121,8 @@ export default function PredictPage(_props: { params?: unknown; searchParams?: u
               <div className="relative">
                 <div className="absolute inset-0 rounded-lg bg-amber-400/40 blur-lg opacity-60" />
                 <h1
-                  className="relative text-xl sm:text-2xl font-black tracking-tight"
-                  style={{ fontFamily: 'Georgia, serif', background: 'linear-gradient(90deg,#f5e8c6,#d4b56a)', WebkitBackgroundClip: 'text', color: 'transparent' }}
+                  className="relative text-xl sm:text-3xl font-black tracking-[0.2em]"
+                  style={{ fontFamily: 'Helvetica', background: 'linear-gradient(90deg,#f5e8c6,#d4b56a)', WebkitBackgroundClip: 'text', color: 'transparent' }}
                 >
                   RESOLV
                 </h1>
@@ -192,7 +192,7 @@ export default function PredictPage(_props: { params?: unknown; searchParams?: u
                 <span className="text-[11px] font-bold text-white uppercase tracking-wider">Live</span>
               </div>
             )}
-            
+
             <TradingChart
               isDark={true}
               isDrawing={isDrawing}

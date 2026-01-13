@@ -20,11 +20,11 @@ function SlotReel({ targetChar, isSpinning, duration = 2000, delay = 0 }: SlotRe
   const rotate = 360 / numChars;
   const charHeight = 40;
   const translateZ = (charHeight / 2) / Math.tan((rotate / 2 / 180) * Math.PI);
-  
+
   // Find target index
   const targetIndex = chars.indexOf(targetChar.toUpperCase());
   const finalIndex = targetIndex >= 0 ? targetIndex : 0;
-  
+
   const [currentDeg, setCurrentDeg] = useState(finalIndex * rotate);
 
   useEffect(() => {
@@ -34,7 +34,7 @@ function SlotReel({ targetChar, isSpinning, duration = 2000, delay = 0 }: SlotRe
       // Calculate target: 5 full spins + land on target
       const spins = 5;
       const targetDeg = (360 * spins) + (finalIndex * rotate);
-      
+
       // Apply animation after delay
       const timeout = setTimeout(() => {
         if (containerRef.current) {
@@ -67,7 +67,7 @@ function SlotReel({ targetChar, isSpinning, duration = 2000, delay = 0 }: SlotRe
 
   return (
     <div className="slot-reel-wrapper">
-      <div 
+      <div
         ref={containerRef}
         className="slot-reel-container"
         style={{
@@ -77,7 +77,7 @@ function SlotReel({ targetChar, isSpinning, duration = 2000, delay = 0 }: SlotRe
         {chars.map((char, index) => (
           <div
             key={index}
-            className="slot-char"
+            className="slot-char font-bold"
             style={{
               transform: `rotateX(${rotate * index}deg) translateZ(${translateZ}px)`,
             }}
