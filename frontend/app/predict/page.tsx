@@ -95,7 +95,7 @@ export default function PredictPage(_props: { params?: unknown; searchParams?: u
   };
 
   return (
-    <div className="min-h-screen text-white pb-24 relative overflow-hidden">
+    <div className=" text-white pb-24 relative overflow-hidden">
       {/* Mesh Gradient Background */}
       <div className="fixed inset-0 z-0">
         <MeshGradients />
@@ -331,7 +331,7 @@ export default function PredictPage(_props: { params?: unknown; searchParams?: u
 
       {/* Bottom Controls - God casino bar (chart untouched) */}
       <div className="fixed bottom-0 left-0 right-0 z-40 relative">
-        <div className="absolute inset-0 bg-gradient-to-t from-[#050308] via-[#07050d]/95 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#050308] to-transparent" />
         <div className="relative px-4 py-4 sm:py-5 border-t border-amber-700/30 shadow-[0_-2px_0_0_rgba(0,0,0,0.6)]">
           <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
             {/* Zoom Controls */}
@@ -351,7 +351,7 @@ export default function PredictPage(_props: { params?: unknown; searchParams?: u
             </div>
 
             {/* Status - Center */}
-            <div className="flex-1 text-center">
+            <div className="flex-1 text-end">
               {selectedMinute && currentPoints.length > 0 ? (
                 <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/30 rounded-full">
                   <span className="text-amber-400 animate-pulse">●</span>
@@ -361,7 +361,7 @@ export default function PredictPage(_props: { params?: unknown; searchParams?: u
                 </div>
               ) : (
                 <span className="text-sm text-amber-400/60 font-medium">
-                  Draw your prediction ↑
+                  Draw your futures ↑
                 </span>
               )}
             </div>
