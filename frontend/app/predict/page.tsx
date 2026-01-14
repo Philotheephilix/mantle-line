@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { BrowserProvider, Contract, parseEther } from 'ethers';
+import { useEffect, useState } from 'react';
+import { BrowserProvider, Contract, parseEther, formatEther } from 'ethers';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useAccount, useBalance } from 'wagmi';
 import { mantleSepoliaChain } from '@/lib/blockchain/wagmi';
@@ -23,6 +23,9 @@ export const dynamic = 'force-dynamic';
 
 const LINE_FUTURES_ABI = [
   'function openPosition(uint16 _leverage, string _predictionCommitmentId) external payable returns (uint256)',
+  'function canClosePosition(uint256 _positionId) external view returns (bool)',
+  'function getPosition(uint256 _positionId) external view returns (tuple(address user,uint256 amount,uint16 leverage,uint256 openTimestamp,string predictionCommitmentId,bool isOpen,int256 pnl,string actualPriceCommitmentId,uint256 closeTimestamp))',
+  'event PositionOpened(uint256 indexed positionId, address indexed user, uint256 amount, uint16 leverage, uint256 timestamp, string predictionCommitmentId)',
 ];
 
 const DEFAULT_FUTURES_CONTRACT_ADDRESS =
@@ -52,6 +55,81 @@ export default function PredictPage(_props: { params?: unknown; searchParams?: u
   const [debugInfo, setDebugInfo] = useState<string>('');
   const [amount, setAmount] = useState<number>(10);
   const [leverage, setLeverage] = useState<number>(2500);
+  const [positionId, setPositionId] = useState<number | null>(null);
+  const [positionStatus, setPositionStatus] = useState<'idle' | 'trading' | 'awaiting_settlement' | 'closed'>('idle');
+  const [positionPnL, setPositionPnL] = useState<number | null>(null);
+  const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
+  const [statusMessageIndex, setStatusMessageIndex] = useState(0);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (positionId === null) return;
+
+    const ethereum = (window as unknown as { ethereum?: unknown }).ethereum;
+    if (!ethereum) return;
+
+    let cancelled = false;
+    let intervalId: number | null = null;
+
+    const provider = new BrowserProvider(ethereum as any);
+    const contract = new Contract(
+      DEFAULT_FUTURES_CONTRACT_ADDRESS,
+      LINE_FUTURES_ABI,
+      provider,
+    );
+
+    const tradingMessages = ['Trading...', 'Future booming...', 'Position active...'] as const;
+
+    const poll = async () => {
+      if (cancelled) return;
+      try {
+        const canClose: boolean = await contract.canClosePosition(positionId);
+        const position = await contract.getPosition(positionId);
+
+        const openTimestampSec = Number(position.openTimestamp?.toString?.() ?? position.openTimestamp);
+        const nowSec = Math.floor(Date.now() / 1000);
+        const closeAt = openTimestampSec + 60;
+        const remaining = closeAt - nowSec;
+
+        setTimeRemaining(remaining > 0 ? remaining : 0);
+
+        if (!position.isOpen) {
+          // Position already closed on-chain – show final PnL
+          const pnlWei = BigInt(position.pnl.toString());
+          const pnlMnt = Number(formatEther(pnlWei));
+          setPositionPnL(pnlMnt);
+          setPositionStatus('closed');
+
+          if (intervalId !== null) {
+            clearInterval(intervalId);
+          }
+          return;
+        }
+
+        if (canClose) {
+          // Eligible to be closed; backend PnL server should close it soon
+          setPositionStatus('awaiting_settlement');
+        } else {
+          setPositionStatus('trading');
+        }
+
+        setStatusMessageIndex(prev => (prev + 1) % tradingMessages.length);
+      } catch (err) {
+        console.error('Error polling position status', err);
+      }
+    };
+
+    // Initial poll
+    poll();
+    intervalId = window.setInterval(poll, 3000);
+
+    return () => {
+      cancelled = true;
+      if (intervalId !== null) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [positionId]);
 
   const handleClear = () => {
     clearPrediction();
@@ -171,6 +249,26 @@ export default function PredictPage(_props: { params?: unknown; searchParams?: u
         console.log('openPosition tx sent:', tx.hash);
         const receipt = await tx.wait();
         console.log('openPosition tx confirmed:', receipt);
+
+        // Try to read PositionOpened from logs to get positionId
+        let openedPositionId: number | null = null;
+        for (const log of receipt.logs || []) {
+          try {
+            const parsed = contract.interface.parseLog(log);
+            if (parsed?.name === 'PositionOpened') {
+              openedPositionId = Number(parsed.args.positionId.toString());
+              break;
+            }
+          } catch {
+            // Not our event, ignore
+          }
+        }
+
+        if (openedPositionId !== null) {
+          setPositionId(openedPositionId);
+          setPositionStatus('trading');
+          setTimeRemaining(60);
+        }
       } catch (err) {
         const message =
           err && typeof err === 'object' && 'message' in err
@@ -350,7 +448,19 @@ export default function PredictPage(_props: { params?: unknown; searchParams?: u
                   className="w-9 h-9 sm:w-10 sm:h-10"
                   style={{ imageRendering: 'pixelated' }}
                 />
-                <span className="font-mono text-sm sm:text-base text-[#C1FF72] tracking-tight">+0.00</span>
+                <span
+                  className={`font-mono text-sm sm:text-base tracking-tight ${
+                    positionPnL !== null
+                      ? positionPnL >= 0
+                        ? 'text-emerald-300'
+                        : 'text-red-300'
+                      : 'text-[#C1FF72]'
+                  }`}
+                >
+                  {positionPnL !== null
+                    ? `${positionPnL >= 0 ? '+' : ''}${positionPnL.toFixed(4)}`
+                    : '+0.00'}
+                </span>
               </div>
             </motion.div>
           </div>
@@ -358,7 +468,7 @@ export default function PredictPage(_props: { params?: unknown; searchParams?: u
 
         {/* Status Info */}
         <AnimatePresence>
-          {debugInfo && (
+          {(debugInfo || positionStatus !== 'idle') && (
             <motion.div
               className="relative overflow-hidden"
               initial={{ opacity: 0, height: 0 }}
@@ -366,7 +476,7 @@ export default function PredictPage(_props: { params?: unknown; searchParams?: u
               exit={{ opacity: 0, height: 0 }}
             >
               <div className="absolute inset-0 bg-gradient-to-r from-[#C1FF72]/20 via-[#1800AD]/20 to-[#C1FF72]/20 animate-pulse" />
-              <div className="relative flex items-center justify-center gap-2 px-4 py-3 bg-[#0a0014]/60 border-2 border-[#C1FF72] rounded-xl">
+              <div className="relative flex flex-col sm:flex-row items-center justify-center gap-2 px-4 py-3 bg-[#0a0014]/60 border-2 border-[#C1FF72] rounded-xl">
                 <motion.span
                   className="text-lg"
                   animate={{ rotate: [0, 10, -10, 0] }}
@@ -374,9 +484,36 @@ export default function PredictPage(_props: { params?: unknown; searchParams?: u
                 >
                   🎯
                 </motion.span>
-                <span className="text-sm font-bold text-[#C1FF72]">
-                  Prediction Set: {debugInfo}
-                </span>
+                <div className="flex flex-col items-center sm:items-start gap-1">
+                  {positionStatus === 'trading' && (
+                    <span className="text-sm font-bold text-[#C1FF72]">
+                      {['Trading...', 'Future booming...', 'Position active...'][statusMessageIndex]}
+                      {timeRemaining !== null && timeRemaining > 0 && (
+                        <span className="ml-2 text-xs text-[#C1FF72]/80">
+                          ({timeRemaining}s left)
+                        </span>
+                      )}
+                    </span>
+                  )}
+
+                  {positionStatus === 'awaiting_settlement' && (
+                    <span className="text-sm font-bold text-[#C1FF72]">
+                      Awaiting settlement... crunching the future lines
+                    </span>
+                  )}
+
+                  {positionStatus === 'closed' && positionPnL !== null && (
+                    <span
+                      className={`text-sm font-bold ${
+                        positionPnL >= 0 ? 'text-emerald-300' : 'text-red-300'
+                      }`}
+                    >
+                      PnL:{' '}
+                      {positionPnL >= 0 ? '+' : ''}
+                      {positionPnL.toFixed(4)} MNT
+                    </span>
+                  )}
+                </div>
               </div>
             </motion.div>
           )}
