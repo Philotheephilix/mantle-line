@@ -8,6 +8,8 @@ import { usePredictionDrawing } from '@/hooks/usePredictionDrawing';
 import { usePriceData } from '@/hooks/usePriceData';
 import MeshGradients from '@/components/MeshGradients';
 
+export const dynamic = 'force-dynamic';
+
 // Props are intentionally not used - they're passed by Next.js but we don't need them
 export default function PredictPage(_props: { params?: unknown; searchParams?: unknown }) {
   const {

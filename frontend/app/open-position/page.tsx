@@ -49,7 +49,7 @@ export default function OpenPositionPage() {
       }
 
       const provider = new BrowserProvider(
-        (window as unknown as { ethereum: unknown }).ethereum
+        (window as unknown as { ethereum: unknown }).ethereum as any
       );
       const accounts = await provider.send('eth_requestAccounts', []);
       if (!accounts || accounts.length === 0) {
@@ -163,7 +163,7 @@ export default function OpenPositionPage() {
       }
 
       const provider = new BrowserProvider(
-        (window as unknown as { ethereum: unknown }).ethereum
+        (window as unknown as { ethereum: unknown }).ethereum as any
       );
       const signer = await provider.getSigner();
 
