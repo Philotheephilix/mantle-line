@@ -22,7 +22,7 @@ export interface Position {
  */
 const LINEFUTURES_ABI = [
   // Read functions
-  'function getPosition(uint256 _positionId) external view returns (tuple(address user, uint256 amount, uint8 leverage, uint256 openTimestamp, string predictionCommitmentId, bool isOpen, int256 pnl, string actualPriceCommitmentId, uint256 closeTimestamp))',
+  'function getPosition(uint256 _positionId) external view returns (tuple(address user, uint256 amount, uint16 leverage, uint256 openTimestamp, string predictionCommitmentId, bool isOpen, int256 pnl, string actualPriceCommitmentId, uint256 closeTimestamp))',
   'function getUserPositions(address _user) external view returns (uint256[])',
   'function canClosePosition(uint256 _positionId) external view returns (bool)',
   'function getContractBalance() external view returns (uint256)',
@@ -35,11 +35,12 @@ const LINEFUTURES_ABI = [
   'function collectedFees() external view returns (uint256)',
   
   // Write functions
-  'function openPosition(uint8 _leverage, string _predictionCommitmentId) external payable returns (uint256)',
+  'function openPosition(uint16 _leverage, string _predictionCommitmentId) external payable returns (uint256)',
+  'function batchOpenPositions(uint16 _leverage, string[] _predictionCommitmentIds) external payable returns (uint256[])',
   'function closePosition(uint256 _positionId, int256 _pnl, string _actualPriceCommitmentId) external',
   
   // Events
-  'event PositionOpened(uint256 indexed positionId, address indexed user, uint256 amount, uint8 leverage, uint256 timestamp, string predictionCommitmentId)',
+  'event PositionOpened(uint256 indexed positionId, address indexed user, uint256 amount, uint16 leverage, uint256 timestamp, string predictionCommitmentId)',
   'event PositionClosed(uint256 indexed positionId, address indexed user, int256 pnl, uint256 finalAmount, string actualPriceCommitmentId, uint256 timestamp)'
 ];
 

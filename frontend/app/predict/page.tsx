@@ -23,6 +23,7 @@ export const dynamic = 'force-dynamic';
 
 const LINE_FUTURES_ABI = [
   'function openPosition(uint16 _leverage, string _predictionCommitmentId) external payable returns (uint256)',
+  'function batchOpenPositions(uint16 _leverage, string[] _predictionCommitmentIds) external payable returns (uint256[])',
   'function canClosePosition(uint256 _positionId) external view returns (bool)',
   'function getPosition(uint256 _positionId) external view returns (tuple(address user,uint256 amount,uint16 leverage,uint256 openTimestamp,string predictionCommitmentId,bool isOpen,int256 pnl,string actualPriceCommitmentId,uint256 closeTimestamp))',
   'event PositionOpened(uint256 indexed positionId, address indexed user, uint256 amount, uint16 leverage, uint256 timestamp, string predictionCommitmentId)',
@@ -30,7 +31,7 @@ const LINE_FUTURES_ABI = [
 
 const DEFAULT_FUTURES_CONTRACT_ADDRESS =
   process.env.NEXT_PUBLIC_FUTURES_CONTRACT_ADDRESS ||
-  '0xb7784EC48266EB7A6155910139025f35918Ac21F';
+  '0xB57652f87ecc08c8B9d87025f9818818964f7916';
 
 // Props are intentionally not used - they're passed by Next.js but we don't need them
 export default function PredictPage(_props: { params?: unknown; searchParams?: unknown }) {
@@ -55,15 +56,15 @@ export default function PredictPage(_props: { params?: unknown; searchParams?: u
   const [debugInfo, setDebugInfo] = useState<string>('');
   const [amount, setAmount] = useState<number>(10);
   const [leverage, setLeverage] = useState<number>(2500);
-  const [positionId, setPositionId] = useState<number | null>(null);
+  const [positionIds, setPositionIds] = useState<number[]>([]);
   const [positionStatus, setPositionStatus] = useState<'idle' | 'trading' | 'awaiting_settlement' | 'closed'>('idle');
-  const [positionPnL, setPositionPnL] = useState<number | null>(null);
+  const [batchPnL, setBatchPnL] = useState<number | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const [statusMessageIndex, setStatusMessageIndex] = useState(0);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    if (positionId === null) return;
+    if (positionIds.length === 0) return;
 
     const ethereum = (window as unknown as { ethereum?: unknown }).ethereum;
     if (!ethereum) return;
@@ -83,34 +84,43 @@ export default function PredictPage(_props: { params?: unknown; searchParams?: u
     const poll = async () => {
       if (cancelled) return;
       try {
-        const canClose: boolean = await contract.canClosePosition(positionId);
-        const position = await contract.getPosition(positionId);
-
-        const openTimestampSec = Number(position.openTimestamp?.toString?.() ?? position.openTimestamp);
         const nowSec = Math.floor(Date.now() / 1000);
-        const closeAt = openTimestampSec + 60;
-        const remaining = closeAt - nowSec;
+        let anyOpen = false;
+        let anyAwaiting = false;
+        let minRemaining: number | null = null;
+        let totalClosedPnlWei = BigInt(0);
 
-        setTimeRemaining(remaining > 0 ? remaining : 0);
+        for (const pid of positionIds) {
+          const position = await contract.getPosition(pid);
+          if (position.isOpen) {
+            anyOpen = true;
+            const openTimestampSec = Number(position.openTimestamp?.toString?.() ?? position.openTimestamp);
+            const closeAt = openTimestampSec + 60;
+            const remaining = closeAt - nowSec;
+            if (minRemaining === null || remaining < minRemaining) {
+              minRemaining = remaining;
+            }
+            const canClose: boolean = await contract.canClosePosition(pid);
+            if (canClose) {
+              anyAwaiting = true;
+            }
+          } else {
+            const pnlWei = BigInt(position.pnl.toString());
+            totalClosedPnlWei += pnlWei;
+          }
+        }
 
-        if (!position.isOpen) {
-          // Position already closed on-chain – show final PnL
-          const pnlWei = BigInt(position.pnl.toString());
-          const pnlMnt = Number(formatEther(pnlWei));
-          setPositionPnL(pnlMnt);
+        setBatchPnL(Number(formatEther(totalClosedPnlWei)));
+
+        if (anyOpen) {
+          setPositionStatus(anyAwaiting ? 'awaiting_settlement' : 'trading');
+          setTimeRemaining(minRemaining !== null && minRemaining > 0 ? minRemaining : 0);
+        } else {
           setPositionStatus('closed');
-
+          setTimeRemaining(0);
           if (intervalId !== null) {
             clearInterval(intervalId);
           }
-          return;
-        }
-
-        if (canClose) {
-          // Eligible to be closed; backend PnL server should close it soon
-          setPositionStatus('awaiting_settlement');
-        } else {
-          setPositionStatus('trading');
         }
 
         setStatusMessageIndex(prev => (prev + 1) % tradingMessages.length);
@@ -129,7 +139,7 @@ export default function PredictPage(_props: { params?: unknown; searchParams?: u
         clearInterval(intervalId);
       }
     };
-  }, [positionId]);
+  }, [positionIds]);
 
   const handleClear = () => {
     clearPrediction();
@@ -166,34 +176,54 @@ export default function PredictPage(_props: { params?: unknown; searchParams?: u
     const futureStartTime = currentMinuteStart + 60;
     const totalDurationSeconds = offsetMinutes * 60;
 
-    const sampledPoints = samplePredictionPoints(points, 60);
-    console.log('sampled prediction canvas points (<= 60):', sampledPoints);
+    let sampledPoints: Array<{ x: number; y: number }>;
+    try {
+      sampledPoints = samplePredictionPoints(points, 60);
+      console.log('sampled prediction canvas points (60):', sampledPoints);
+    } catch (err) {
+      const message =
+        err && typeof err === 'object' && 'message' in err
+          ? String((err as { message: unknown }).message)
+          : 'Not enough points to sample the required number of predictions';
+      console.error('sampling error:', err);
+      alert(
+        message.includes('Not enough points')
+          ? 'Please draw a longer pattern so we can sample at least 60 points.'
+          : `Error sampling prediction points: ${message}`,
+      );
+      return;
+    }
 
-    let commitment: string | null = null;
+    const commitmentIds: string[] = [];
 
     if (!address) {
       console.error('wallet not connected; cannot upload predictions or open position');
     } else {
       try {
-        const { commitmentId } = await uploadSampledPredictionPoints({
-          points: sampledPoints,
-          userAddress: address,
-          desiredCount: 60,
-        });
-        console.log('prediction commitment from backend:', commitmentId);
-        commitment = commitmentId;
+        // For each minute in the selected horizon, create a separate EigenDA
+        // commitment containing 60 predictions.
+        for (let i = 0; i < offsetMinutes; i++) {
+          const { commitmentId } = await uploadSampledPredictionPoints({
+            points,
+            userAddress: address,
+            desiredCount: 60,
+          });
+          console.log(`prediction commitment from backend [${i}]:`, commitmentId);
+          commitmentIds.push(commitmentId);
+        }
       } catch (err) {
         console.error('failed to upload sampled prediction points', err);
+        const message =
+          err && typeof err === 'object' && 'message' in err
+            ? String((err as { message: unknown }).message)
+            : 'Prediction upload failed';
+        alert(`Error uploading predictions: ${message}`);
+        return;
       }
     }
 
-    if (commitment && typeof window !== 'undefined' && address) {
+    if (commitmentIds.length > 0 && typeof window !== 'undefined' && address) {
       try {
-        // Validate commitmentId
-        if (!commitment || commitment.trim().length === 0) {
-          throw new Error('Invalid commitment ID: cannot be empty');
-        }
-
         // Validate inputs
         const lev = Number(leverage);
         if (!Number.isFinite(lev) || lev < 1 || lev > 2500) {
@@ -204,6 +234,8 @@ export default function PredictPage(_props: { params?: unknown; searchParams?: u
         if (!Number.isFinite(amt) || amt < 10) {
           throw new Error('Amount must be at least 10 MNT');
         }
+
+        const positionsCount = Math.max(1, offsetMinutes);
 
         const ethereum = (window as unknown as { ethereum?: unknown }).ethereum;
         if (!ethereum) {
@@ -219,57 +251,147 @@ export default function PredictPage(_props: { params?: unknown; searchParams?: u
           signer,
         );
 
-        // Convert amount to wei
-        const valueInWei = parseEther(amt.toString());
+        // Convert per-position amount to wei
+        const valuePerPositionWei = parseEther(amt.toString());
 
-        console.log('Calling openPosition with:', {
-          leverage: lev,
-          leverageType: typeof lev,
-          commitmentId: commitment,
-          commitmentIdLength: commitment.length,
-          amount: amt,
-          valueInWei: valueInWei.toString(),
-          contractAddress: DEFAULT_FUTURES_CONTRACT_ADDRESS,
-        });
-
-        // Estimate gas first to catch any issues early
-        try {
-          const gasEstimate = await contract.openPosition.estimateGas(lev, commitment.trim(), {
-            value: valueInWei,
-          });
-          console.log('Gas estimate:', gasEstimate.toString());
-        } catch (gasErr) {
-          console.error('Gas estimation failed:', gasErr);
-          throw new Error(`Gas estimation failed: ${gasErr instanceof Error ? gasErr.message : String(gasErr)}`);
-        }
-
-        // Call contract - leverage must be uint16, commitmentId must be non-empty string
-        const tx = await contract.openPosition(lev, commitment.trim(), {
-          value: valueInWei,
-        });
-
-        console.log('openPosition tx sent:', tx.hash);
-        const receipt = await tx.wait();
-        console.log('openPosition tx confirmed:', receipt);
-
-        // Try to read PositionOpened from logs to get positionId
-        let openedPositionId: number | null = null;
-        for (const log of receipt.logs || []) {
-          try {
-            const parsed = contract.interface.parseLog(log);
-            if (parsed?.name === 'PositionOpened') {
-              openedPositionId = Number(parsed.args.positionId.toString());
-              break;
-            }
-          } catch {
-            // Not our event, ignore
+        if (commitmentIds.length === 1) {
+          const commitment = commitmentIds[0];
+          if (!commitment || commitment.trim().length === 0) {
+            throw new Error('Invalid commitment ID: cannot be empty');
           }
-        }
 
-        if (openedPositionId !== null) {
-          setPositionId(openedPositionId);
-          setPositionStatus('trading');
-          setTimeRemaining(60);
+          const totalValueWei = valuePerPositionWei;
+
+          console.log('Calling openPosition with:', {
+            leverage: lev,
+            leverageType: typeof lev,
+            commitmentId: commitment,
+            commitmentIdLength: commitment.length,
+            amount: amt,
+            valueInWei: totalValueWei.toString(),
+            contractAddress: DEFAULT_FUTURES_CONTRACT_ADDRESS,
+          });
+
+          // Estimate gas first to catch any issues early
+          try {
+            const gasEstimate = await contract.openPosition.estimateGas(
+              lev,
+              commitment.trim(),
+              {
+                value: totalValueWei,
+              },
+            );
+            console.log('Gas estimate (openPosition):', gasEstimate.toString());
+          } catch (gasErr) {
+            console.error('Gas estimation failed:', gasErr);
+            throw new Error(
+              `Gas estimation failed: ${
+                gasErr instanceof Error ? gasErr.message : String(gasErr)
+              }`,
+            );
+          }
+
+          // Call contract - leverage must be uint16, commitmentId must be non-empty string
+          const tx = await contract.openPosition(lev, commitment.trim(), {
+            value: totalValueWei,
+          });
+
+          console.log('openPosition tx sent:', tx.hash);
+          const receipt = await tx.wait();
+          console.log('openPosition tx confirmed:', receipt);
+
+          // Try to read PositionOpened from logs to get positionId
+          let openedPositionId: number | null = null;
+          for (const log of receipt.logs || []) {
+            try {
+              const parsed = contract.interface.parseLog(log);
+              if (parsed?.name === 'PositionOpened') {
+                openedPositionId = Number(parsed.args.positionId.toString());
+                break;
+              }
+            } catch {
+              // Not our event, ignore
+            }
+          }
+
+          if (openedPositionId !== null) {
+            setPositionIds([openedPositionId]);
+            setPositionStatus('trading');
+            setTimeRemaining(60);
+            setBatchPnL(null);
+          }
+        } else {
+          // Batch open positions: amount is per position, so total value is
+          // per-position value multiplied by the number of positions.
+          const totalValueWei = valuePerPositionWei * BigInt(positionsCount);
+
+          console.log('Calling batchOpenPositions with:', {
+            leverage: lev,
+            leverageType: typeof lev,
+            commitmentIds,
+            commitmentCount: commitmentIds.length,
+            amountPerPosition: amt,
+            totalValueWei: totalValueWei.toString(),
+            contractAddress: DEFAULT_FUTURES_CONTRACT_ADDRESS,
+          });
+
+          // Basic validation on commitment IDs
+          if (commitmentIds.some((id) => !id || id.trim().length === 0)) {
+            throw new Error('Invalid commitment ID in batch: cannot be empty');
+          }
+
+          try {
+            const gasEstimate = await contract.batchOpenPositions.estimateGas(
+              lev,
+              commitmentIds.map((id) => id.trim()),
+              {
+                value: totalValueWei,
+              },
+            );
+            console.log(
+              'Gas estimate (batchOpenPositions):',
+              gasEstimate.toString(),
+            );
+          } catch (gasErr) {
+            console.error('Gas estimation failed (batch):', gasErr);
+            throw new Error(
+              `Gas estimation failed (batch): ${
+                gasErr instanceof Error ? gasErr.message : String(gasErr)
+              }`,
+            );
+          }
+
+          const tx = await contract.batchOpenPositions(
+            lev,
+            commitmentIds.map((id) => id.trim()),
+            {
+              value: totalValueWei,
+            },
+          );
+
+          console.log('batchOpenPositions tx sent:', tx.hash);
+          const receipt = await tx.wait();
+          console.log('batchOpenPositions tx confirmed:', receipt);
+
+          // Collect all opened position IDs from logs for batch tracking
+          const openedIds: number[] = [];
+          for (const log of receipt.logs || []) {
+            try {
+              const parsed = contract.interface.parseLog(log);
+              if (parsed?.name === 'PositionOpened') {
+                openedIds.push(Number(parsed.args.positionId.toString()));
+              }
+            } catch {
+              // Not our event, ignore
+            }
+          }
+
+          if (openedIds.length > 0) {
+            setPositionIds(openedIds);
+            setPositionStatus('trading');
+            setTimeRemaining(60);
+            setBatchPnL(null);
+          }
         }
       } catch (err) {
         const message =
@@ -280,14 +402,14 @@ export default function PredictPage(_props: { params?: unknown; searchParams?: u
         alert(`Error opening position: ${message}`);
       }
     } else {
-      if (!commitment) {
-        console.error('Cannot open position: no commitment ID');
+      if (commitmentIds.length === 0) {
+        console.error('Cannot open position: no commitment IDs');
       }
       if (!address) {
         console.error('Cannot open position: wallet not connected');
       }
     }
-    
+
     const predictionPoints = sampledPoints.map((point) => {
       const normalizedX = point.x / canvasWidth;
       const time = futureStartTime + normalizedX * totalDurationSeconds;
@@ -456,15 +578,15 @@ export default function PredictPage(_props: { params?: unknown; searchParams?: u
                 />
                 <span
                   className={`font-mono text-sm sm:text-base tracking-tight ${
-                    positionPnL !== null
-                      ? positionPnL >= 0
+                    batchPnL !== null
+                      ? batchPnL >= 0
                         ? 'text-emerald-300'
                         : 'text-red-300'
                       : 'text-[#C1FF72]'
                   }`}
                 >
-                  {positionPnL !== null
-                    ? `${positionPnL >= 0 ? '+' : ''}${positionPnL.toFixed(4)}`
+                  {batchPnL !== null
+                    ? `${batchPnL >= 0 ? '+' : ''}${batchPnL.toFixed(4)}`
                     : '+0.00'}
                 </span>
               </div>
@@ -508,15 +630,15 @@ export default function PredictPage(_props: { params?: unknown; searchParams?: u
                     </span>
                   )}
 
-                  {positionStatus === 'closed' && positionPnL !== null && (
+                  {positionStatus === 'closed' && batchPnL !== null && (
                     <span
                       className={`text-sm font-bold ${
-                        positionPnL >= 0 ? 'text-emerald-300' : 'text-red-300'
+                        batchPnL >= 0 ? 'text-emerald-300' : 'text-red-300'
                       }`}
                     >
                       PnL:{' '}
-                      {positionPnL >= 0 ? '+' : ''}
-                      {positionPnL.toFixed(4)} MNT
+                      {batchPnL >= 0 ? '+' : ''}
+                      {batchPnL.toFixed(4)} MNT
                     </span>
                   )}
                 </div>

@@ -7,11 +7,21 @@ export function samplePredictionPoints(
   points: CanvasPoint[],
   desiredCount = 60,
 ): CanvasPoint[] {
-  if (points.length === 0) return [];
+  if (points.length === 0) {
+    throw new Error(
+      'Not enough points to sample the required number of predictions',
+    );
+  }
+
+  if (points.length < desiredCount) {
+    throw new Error(
+      'Not enough points to sample the required number of predictions',
+    );
+  }
 
   const maxY = points.reduce((max, p) => (p.y > max ? p.y : max), points[0].y);
 
-  if (points.length <= desiredCount) {
+  if (points.length === desiredCount) {
     return points.map((p) => ({ x: p.x, y: maxY - p.y }));
   }
 
@@ -45,7 +55,10 @@ export async function uploadSampledPredictionPoints(options: {
     throw new Error('uploadSampledPredictionPoints: userAddress is required');
   }
 
-  const predictions = points.map((p) => p.y + 1);
+  // Sample and normalize points before upload so we always send exactly
+  // desiredCount predictions (default 60) per EigenDA commitment.
+  const sampledPoints = samplePredictionPoints(points, desiredCount);
+  const predictions = sampledPoints.map((p) => p.y + 1);
   console.log('predictions:', predictions);
   console.log('backendUrl:', backendUrl);
   console.log('userAddress:', userAddress);

@@ -5,7 +5,7 @@ export default buildModule("LineFuturesModule", (m) => {
   const pnlServerAddress = m.getParameter("pnlServerAddress", m.getAccount(0));
   
   // Get the MNTPriceOracle address from parameters (required)
-  const mntPriceOracleAddress = "0xB4Aa6814Ad2EA5DE6feC8Af4f129FfA6777db235";
+  const mntPriceOracleAddress = m.getParameter("mntPriceOracleAddress", "0xd30d89f5A34D9aF15915dcaeFF8fC11070034982");
 
   // Deploy the LineFutures contract
   const lineFutures = m.contract("LineFutures", [pnlServerAddress, mntPriceOracleAddress]);
