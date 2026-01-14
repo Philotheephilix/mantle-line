@@ -125,44 +125,126 @@ export class FuturesContractStorage {
 
   /**
    * Close a position (only callable by PnL server)
+   * Includes proper nonce management and gas price handling to avoid replacement transaction errors
    */
   public async closePosition(
     positionId: number,
     pnl: bigint,
     actualPriceCommitmentId: string
   ): Promise<string> {
-    try {
-      logger.info('Closing position', {
-        positionId,
-        pnl: pnl.toString(),
-        actualPriceCommitmentId
-      });
+    const maxRetries = 3;
+    const retryDelays = [2000, 4000, 8000]; // 2s, 4s, 8s
 
-      const tx = await this.contract.closePosition(
-        positionId,
-        pnl,
-        actualPriceCommitmentId
-      );
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        logger.info('Closing position', {
+          positionId,
+          pnl: pnl.toString(),
+          actualPriceCommitmentId,
+          attempt: attempt + 1,
+          maxRetries
+        });
 
-      logger.info('Close position transaction sent', {
-        positionId,
-        txHash: tx.hash
-      });
+        // Get fresh nonce from network (including pending transactions)
+        const nonce = await this.provider.getTransactionCount(this.wallet.address, 'pending');
 
-      const receipt = await tx.wait();
+        // Estimate gas
+        const gasEstimate = await this.contract.closePosition.estimateGas(
+          positionId,
+          pnl,
+          actualPriceCommitmentId
+        );
 
-      logger.info('Position closed successfully', {
-        positionId,
-        txHash: receipt.hash,
-        blockNumber: receipt.blockNumber,
-        gasUsed: receipt.gasUsed.toString()
-      });
+        // Add 20% buffer to gas estimate
+        const gasLimit = (gasEstimate * 120n) / 100n;
 
-      return receipt.hash;
-    } catch (error) {
-      logger.error('Failed to close position', { positionId, error });
-      throw error;
+        // Get current fee data
+        const feeData = await this.provider.getFeeData();
+        
+        // Bump gas price for retries (10% increase per attempt)
+        const gasPriceMultiplier = 100n + (BigInt(attempt) * 10n); // 100%, 110%, 120%
+        const gasPrice = feeData.gasPrice 
+          ? (feeData.gasPrice * gasPriceMultiplier) / 100n
+          : undefined;
+
+        logger.debug('Transaction parameters', {
+          positionId,
+          gasLimit: gasLimit.toString(),
+          gasPrice: gasPrice?.toString(),
+          nonce,
+          attempt: attempt + 1
+        });
+
+        // Send transaction with explicit nonce and gas settings
+        const tx = await this.contract.closePosition(
+          positionId,
+          pnl,
+          actualPriceCommitmentId,
+          {
+            gasLimit,
+            gasPrice,
+            nonce
+          }
+        );
+
+        logger.info('Close position transaction sent', {
+          positionId,
+          txHash: tx.hash,
+          nonce,
+          attempt: attempt + 1
+        });
+
+        // Wait for confirmation
+        const receipt = await tx.wait();
+
+        logger.info('Position closed successfully', {
+          positionId,
+          txHash: receipt.hash,
+          blockNumber: receipt.blockNumber,
+          gasUsed: receipt.gasUsed.toString(),
+          attempt: attempt + 1
+        });
+
+        return receipt.hash;
+
+      } catch (error: any) {
+        const errorCode = error?.code;
+        const errorMessage = error?.message || String(error);
+        const isReplacementError = 
+          errorCode === 'REPLACEMENT_UNDERPRICED' ||
+          errorMessage.includes('replacement transaction underpriced') ||
+          errorMessage.includes('replacement fee too low');
+
+        // If it's a replacement error and we have retries left, wait and retry with higher gas
+        if (isReplacementError && attempt < maxRetries - 1) {
+          const delay = retryDelays[attempt];
+          logger.warn('Replacement transaction error, retrying with higher gas price', {
+            positionId,
+            attempt: attempt + 1,
+            maxRetries,
+            delay,
+            error: errorMessage
+          });
+          
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue; // Retry with higher gas price
+        }
+
+        // If it's the last attempt or a different error, throw
+        logger.error('Failed to close position', { 
+          positionId, 
+          attempt: attempt + 1,
+          maxRetries,
+          error,
+          errorCode,
+          errorMessage
+        });
+        throw error;
+      }
     }
+
+    // Should never reach here, but TypeScript needs it
+    throw new Error('Failed to close position after all retries');
   }
 
   /**

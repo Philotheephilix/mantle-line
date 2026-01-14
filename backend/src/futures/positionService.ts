@@ -233,22 +233,43 @@ export class PositionService {
       const predictions = predictionBlob.predictions;
 
       // Step 4: Get actual price data for the position's time window
-      const windowStart = Math.floor(Number(position.openTimestamp) / 60) * 60;
+      // Use getWindowForPosition to extract exact 60-second window from current and next minute
+      const openTimestamp = Number(position.openTimestamp);
       
-      logger.info('Retrieving actual prices', {
+      logger.info('Retrieving actual prices for position', {
         positionId,
-        windowStart
+        openTimestamp
       });
 
-      // Use RetrievalService to get the full price window data
-      const actualPriceWindow = await this.retrievalService.getWindow(windowStart);
+      const actualPriceWindow = await this.retrievalService.getWindowForPosition(openTimestamp);
       
       if (!actualPriceWindow) {
-        throw new Error('Actual price data not found for position window');
+        const now = Math.floor(Date.now() / 1000);
+        const elapsed = now - openTimestamp;
+        const currentMinuteStart = Math.floor(openTimestamp / 60) * 60;
+        const nextMinuteStart = currentMinuteStart + 60;
+        const currentMinute = Math.floor(now / 60) * 60;
+        
+        logger.error('Actual price data not found for position window', {
+          positionId,
+          openTimestamp,
+          now,
+          elapsed,
+          currentMinuteStart,
+          nextMinuteStart,
+          currentMinute,
+          nextMinuteExists: nextMinuteStart <= currentMinute,
+          note: 'This may happen if position closes before next minute window is stored. Will retry.'
+        });
+        
+        throw new Error(`Actual price data not found for position window. Position opened at ${openTimestamp}, current time ${now}, elapsed ${elapsed}s. Next minute window (${nextMinuteStart}) ${nextMinuteStart > currentMinute ? 'not yet stored' : 'should exist but not found'}.`);
       }
 
       const actualPrices = actualPriceWindow.prices;
-      const actualPriceCommitmentId = await this.oracleContract.getCommitment(windowStart);
+      
+      // Get commitment ID from the current minute (the minute containing the position start)
+      const currentMinuteStart = Math.floor(openTimestamp / 60) * 60;
+      const actualPriceCommitmentId = await this.oracleContract.getCommitment(currentMinuteStart);
 
       if (actualPrices.length !== 60) {
         throw new Error(`Invalid actual prices length: ${actualPrices.length}, expected 60`);

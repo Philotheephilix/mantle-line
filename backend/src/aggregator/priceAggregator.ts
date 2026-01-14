@@ -54,15 +54,15 @@ export class PriceAggregator extends EventEmitter {
     this.lastPrice = priceEntry.price;
 
     // Log every price for debugging
-    if (Math.random()) { // 10% of prices
-      logger.info('Price tracked', {
-        originalTimestamp: priceEntry.timestamp,
-        second: currentSecond,
-        price: priceEntry.price,
-        date: new Date(priceEntry.timestamp).toISOString(),
-        trackedSeconds: this.secondTracker.size
-      });
-    }
+    // if (Math.random()) { // 10% of prices
+    //   logger.info('Price tracked', {
+    //     originalTimestamp: priceEntry.timestamp,
+    //     second: currentSecond,
+    //     price: priceEntry.price,
+    //     date: new Date(priceEntry.timestamp).toISOString(),
+    //     trackedSeconds: this.secondTracker.size
+    //   });
+    // }
   }
 
   /**

@@ -167,7 +167,10 @@ export class PositionCloser {
       errorMessage.includes('Failed to retrieve') ||
       errorMessage.includes('not found') ||
       errorMessage.includes('EigenDA') ||
-      errorMessage.includes('Actual price data not found');
+      errorMessage.includes('Actual price data not found') ||
+      errorMessage.includes('price data not found for position window') ||
+      errorMessage.includes('window not found') ||
+      errorMessage.includes('not yet stored');
 
     if (this.retryQueue.has(positionId)) {
       const failedPos = this.retryQueue.get(positionId)!;
