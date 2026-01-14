@@ -4,6 +4,7 @@ import { PNLCalculator, PNLResult } from '../pnl/pnlCalculator.js';
 import { EigenDASubmitter } from '../eigenda/eigendaSubmitter.js';
 import { ContractStorage } from '../contract/contractStorage.js';
 import { RetrievalService } from '../retrieval/retrievalService.js';
+import { PositionDatabase } from '../database/positionDatabase.js';
 import logger from '../utils/logger.js';
 
 /**
@@ -59,6 +60,7 @@ export class PositionService {
   private eigenDASubmitter: EigenDASubmitter;
   private oracleContract: ContractStorage;
   private retrievalService: RetrievalService;
+  private positionDatabase?: PositionDatabase;
 
   constructor(
     futuresContract: FuturesContractStorage,
@@ -66,7 +68,8 @@ export class PositionService {
     pnlCalculator: PNLCalculator,
     eigenDASubmitter: EigenDASubmitter,
     oracleContract: ContractStorage,
-    retrievalService: RetrievalService
+    retrievalService: RetrievalService,
+    positionDatabase?: PositionDatabase
   ) {
     this.futuresContract = futuresContract;
     this.predictionService = predictionService;
@@ -74,8 +77,11 @@ export class PositionService {
     this.eigenDASubmitter = eigenDASubmitter;
     this.oracleContract = oracleContract;
     this.retrievalService = retrievalService;
+    this.positionDatabase = positionDatabase;
 
-    logger.info('PositionService initialized');
+    logger.info('PositionService initialized', {
+      hasDatabase: !!positionDatabase
+    });
   }
 
   /**
@@ -334,6 +340,41 @@ export class PositionService {
         pnl: result.pnl,
         finalAmount: result.finalAmount
       });
+
+      // Step 8: Save to database for leaderboard
+      if (this.positionDatabase) {
+        try {
+          // Get the closed position from contract to get closeTimestamp
+          const closedPosition = await this.futuresContract.getPosition(positionId);
+          const closeTimestamp = closedPosition.closeTimestamp 
+            ? Number(closedPosition.closeTimestamp.toString())
+            : result.closedAt;
+
+          this.positionDatabase.savePosition({
+            positionId,
+            userAddress: position.user,
+            amount: position.amount.toString(),
+            leverage: position.leverage,
+            openTimestamp: Number(position.openTimestamp.toString()),
+            closeTimestamp,
+            pnl: result.pnl,
+            predictionCommitmentId: position.predictionCommitmentId,
+            actualPriceCommitmentId: result.actualPriceCommitmentId,
+            txHash: result.transaction.hash,
+            accuracy: result.accuracy,
+            correctDirections: result.correctDirections,
+            totalDirections: result.totalDirections
+          });
+
+          logger.info('Position saved to database', { positionId });
+        } catch (dbError) {
+          // Log but don't fail the position close if database save fails
+          logger.error('Failed to save position to database', {
+            positionId,
+            error: dbError
+          });
+        }
+      }
 
       return result;
     } catch (error) {

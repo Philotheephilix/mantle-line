@@ -1,125 +1,27 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAccount } from 'wagmi';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { formatEther, parseEther } from 'ethers';
 import { Header, Footer } from '@/components/layout';
 import { NoiseEffect } from '@/components/ui/NoiseEffect';
-
-// Mock leaderboard data
-const mockLeaderboardData = [
-  {
-    rank: 1,
-    address: '0x742d35Cc6634C0532925a3b844Bc9e7595f1e5E8',
-    username: 'NyanMaster',
-    totalPnL: 125420.50,
-    winRate: 78.5,
-    totalTrades: 156,
-    bestTrade: 45000,
-    streak: 12,
-    avatar: '🐱',
-  },
-  {
-    rank: 2,
-    address: '0x8ba1f109551bD432803012645Ac136ddd64DBA72',
-    username: 'LineWhisperer',
-    totalPnL: 98750.25,
-    winRate: 72.3,
-    totalTrades: 203,
-    bestTrade: 32000,
-    streak: 8,
-    avatar: '🎨',
-  },
-  {
-    rank: 3,
-    address: '0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B',
-    username: 'CurveKing',
-    totalPnL: 87340.00,
-    winRate: 68.9,
-    totalTrades: 178,
-    bestTrade: 28500,
-    streak: 5,
-    avatar: '👑',
-  },
-  {
-    rank: 4,
-    address: '0xCA35b7d915458EF540aDe6068dFe2F44E8fa733c',
-    username: 'PatternPro',
-    totalPnL: 72150.75,
-    winRate: 65.2,
-    totalTrades: 245,
-    bestTrade: 22000,
-    streak: 3,
-    avatar: '📈',
-  },
-  {
-    rank: 5,
-    address: '0x14723A09ACff6D2A60DcdF7aA4AFf308FDDC160C',
-    username: 'DrawMaster',
-    totalPnL: 65890.30,
-    winRate: 63.8,
-    totalTrades: 189,
-    bestTrade: 19500,
-    streak: 6,
-    avatar: '✏️',
-  },
-  {
-    rank: 6,
-    address: '0x4B0897b0513fdC7C541B6d9D7E929C4e5364D2dB',
-    username: 'FuturesWizard',
-    totalPnL: 58420.00,
-    winRate: 61.5,
-    totalTrades: 167,
-    bestTrade: 17800,
-    streak: 4,
-    avatar: '🧙',
-  },
-  {
-    rank: 7,
-    address: '0x583031D1113aD414F02576BD6afaBfb302140225',
-    username: 'TrendRider',
-    totalPnL: 51200.45,
-    winRate: 59.2,
-    totalTrades: 198,
-    bestTrade: 15600,
-    streak: 2,
-    avatar: '🏄',
-  },
-  {
-    rank: 8,
-    address: '0xdD870fA1b7C4700F2BD7f44238821C26f7392148',
-    username: 'ChartNinja',
-    totalPnL: 45670.80,
-    winRate: 57.8,
-    totalTrades: 223,
-    bestTrade: 14200,
-    streak: 7,
-    avatar: '🥷',
-  },
-  {
-    rank: 9,
-    address: '0x0A098Eda01Ce92ff4A4CCb7A4fFFb5A43EBC70DC',
-    username: 'PredictionPunk',
-    totalPnL: 39850.25,
-    winRate: 55.4,
-    totalTrades: 176,
-    bestTrade: 12800,
-    streak: 1,
-    avatar: '🎸',
-  },
-  {
-    rank: 10,
-    address: '0x71C7656EC7ab88b098defB751B7401B5f6d8976F',
-    username: 'LineArtist',
-    totalPnL: 34520.60,
-    winRate: 53.1,
-    totalTrades: 145,
-    bestTrade: 11500,
-    streak: 3,
-    avatar: '🎭',
-  },
-];
+import { getLeaderboard, getUserStats } from '@/lib/api/leaderboard';
+import type { LeaderboardEntry, UserStats } from '@/types/leaderboard';
 
 type TimeFilter = 'all' | 'monthly' | 'weekly' | 'daily';
+type SortBy = 'pnl' | 'timestamp';
+
+interface AggregatedUser {
+  address: string;
+  totalPnL: number;
+  winRate: number;
+  totalTrades: number;
+  bestTrade: number;
+  positions: LeaderboardEntry[];
+  rank: number;
+}
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -140,9 +42,151 @@ const itemVariants = {
   },
 };
 
+// Generate avatar emoji from address
+const getAvatar = (address: string): string => {
+  const emojis = ['🐱', '🎨', '👑', '📈', '✏️', '🧙', '🏄', '🥷', '🎸', '🎭', '🚀', '💎', '⭐', '🔥', '🎯'];
+  const index = parseInt(address.slice(2, 4), 16) % emojis.length;
+  return emojis[index];
+};
+
+// Generate username from address
+const getUsername = (address: string): string => {
+  const names = ['NyanMaster', 'LineWhisperer', 'CurveKing', 'PatternPro', 'DrawMaster', 
+    'FuturesWizard', 'TrendRider', 'ChartNinja', 'PredictionPunk', 'LineArtist'];
+  const index = parseInt(address.slice(2, 4), 16) % names.length;
+  return names[index];
+};
+
 export default function LeaderboardPage() {
+  const { address, isConnected } = useAccount();
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
+  const [sortBy, setSortBy] = useState<SortBy>('pnl');
   const [hoveredRank, setHoveredRank] = useState<number | null>(null);
+  const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([]);
+  const [userStats, setUserStats] = useState<UserStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [limit, setLimit] = useState(100);
+  const [offset, setOffset] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+
+  // Aggregate positions by user address
+  const aggregatedUsers = useMemo(() => {
+    const userMap = new Map<string, LeaderboardEntry[]>();
+    
+    leaderboardData.forEach((position) => {
+      const addr = position.userAddress.toLowerCase();
+      if (!userMap.has(addr)) {
+        userMap.set(addr, []);
+      }
+      userMap.get(addr)!.push(position);
+    });
+
+    const aggregated: AggregatedUser[] = Array.from(userMap.entries()).map(([address, positions]) => {
+      // Convert PnL from wei to ETH for calculations
+      const pnls = positions.map(p => {
+        if (!p.pnl || p.pnl === '0' || p.pnl === '') {
+          return 0;
+        }
+        try {
+          const ethValue = formatEther(p.pnl);
+          const num = parseFloat(ethValue);
+          return isNaN(num) ? 0 : num;
+        } catch (error) {
+          console.warn('Failed to convert PnL:', p.pnl, error);
+          const num = parseFloat(p.pnl) / 1e18;
+          return isNaN(num) ? 0 : num;
+        }
+      });
+      const totalPnL = pnls.reduce((sum, pnl) => sum + pnl, 0);
+      const winningTrades = pnls.filter(pnl => pnl > 0).length;
+      const winRate = positions.length > 0 ? (winningTrades / positions.length) * 100 : 0;
+      // Best trade is the maximum PnL (could be negative, so don't clamp to 0)
+      const bestTrade = pnls.length > 0 ? Math.max(...pnls) : 0;
+
+      return {
+        address,
+        totalPnL,
+        winRate,
+        totalTrades: positions.length,
+        bestTrade,
+        positions,
+        rank: 0, // Will be set after sorting
+      };
+    });
+
+    // Sort by total PnL (descending)
+    aggregated.sort((a, b) => b.totalPnL - a.totalPnL);
+    
+    // Assign ranks
+    aggregated.forEach((user, index) => {
+      user.rank = index + 1;
+    });
+
+    return aggregated;
+  }, [leaderboardData]);
+
+  // Fetch leaderboard data
+  const fetchLeaderboard = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await getLeaderboard(limit, offset, sortBy);
+      console.log('Leaderboard response:', response);
+      console.log('Sample position:', response.positions[0]);
+      if (response.positions[0]) {
+        console.log('Sample PnL value:', response.positions[0].pnl);
+        console.log('Sample PnL formatted:', formatEther(response.positions[0].pnl));
+      }
+      setLeaderboardData(response.positions);
+      setTotal(response.total);
+      setLastUpdated(new Date());
+    } catch (err) {
+      console.error('Failed to fetch leaderboard:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load leaderboard');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch user stats when wallet is connected
+  const fetchUserStats = async () => {
+    if (!address || !isConnected) {
+      setUserStats(null);
+      return;
+    }
+
+    try {
+      const stats = await getUserStats(address);
+      setUserStats(stats);
+    } catch (err) {
+      console.error('Failed to fetch user stats:', err);
+      // Don't set error state for user stats - it's optional
+    }
+  };
+
+  // Initial load
+  useEffect(() => {
+    fetchLeaderboard();
+  }, [limit, offset, sortBy]);
+
+  // Fetch user stats when address changes
+  useEffect(() => {
+    fetchUserStats();
+  }, [address, isConnected]);
+
+  // Auto-refresh every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchLeaderboard();
+      if (isConnected && address) {
+        fetchUserStats();
+      }
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [isConnected, address]);
 
   const getRankStyle = (rank: number) => {
     switch (rank) {
@@ -174,13 +218,95 @@ export default function LeaderboardPage() {
     return `${address.slice(0, 6)}…${address.slice(-4)}`;
   };
 
-  const formatPnL = (pnl: number) => {
+  const formatPnL = (pnl: number | string, isAlreadyInEth: boolean = false) => {
+    // PnL can be in wei (string from API) or already in ETH (number from aggregation)
+    let num: number;
+    if (typeof pnl === 'string') {
+      // Handle empty or invalid strings
+      if (!pnl || pnl === '0' || pnl === '') {
+        return '$0.00';
+      }
+      // If already in ETH, just parse it
+      if (isAlreadyInEth) {
+        num = parseFloat(pnl);
+      } else {
+        // Use formatEther to convert from wei to ETH (handles negative values)
+        try {
+          const ethValue = formatEther(pnl);
+          num = parseFloat(ethValue);
+          // Check if conversion resulted in NaN
+          if (isNaN(num)) {
+            console.warn('formatEther returned NaN for:', pnl);
+            num = parseFloat(pnl) / 1e18;
+          }
+        } catch (error) {
+          console.warn('formatEther failed for:', pnl, error);
+          // Fallback to direct parsing if formatEther fails
+          num = parseFloat(pnl) / 1e18;
+        }
+      }
+    } else {
+      // If it's already a number, it's already in ETH (from aggregation)
+      num = pnl;
+    }
+    
+    // Handle NaN or invalid numbers
+    if (isNaN(num) || !isFinite(num)) {
+      console.warn('Invalid PnL value:', pnl, 'converted to:', num);
+      return '$0.00';
+    }
+    
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
       minimumFractionDigits: 2,
-    }).format(pnl);
+      maximumFractionDigits: 6, // Allow more decimals for crypto amounts
+    }).format(num);
   };
+
+  // Calculate stats from aggregated data
+  const stats = useMemo(() => {
+    if (aggregatedUsers.length === 0) {
+      return {
+        totalTraders: 0,
+        totalVolume: 0,
+        positionsToday: 0,
+        avgWinRate: 0,
+      };
+    }
+
+    const totalTraders = aggregatedUsers.length;
+    const totalVolume = aggregatedUsers.reduce((sum, user) => {
+      return sum + user.positions.reduce((posSum, pos) => {
+        // Convert amount from wei to ETH
+        try {
+          return posSum + parseFloat(formatEther(pos.amount));
+        } catch {
+          return posSum + parseFloat(pos.amount) / 1e18;
+        }
+      }, 0);
+    }, 0);
+    
+    const now = Date.now() / 1000;
+    const todayStart = Math.floor(now / 86400) * 86400;
+    const positionsToday = leaderboardData.filter(pos => pos.closeTimestamp >= todayStart).length;
+    
+    const avgWinRate = aggregatedUsers.reduce((sum, user) => sum + user.winRate, 0) / totalTraders;
+
+    return {
+      totalTraders,
+      totalVolume,
+      positionsToday,
+      avgWinRate,
+    };
+  }, [aggregatedUsers, leaderboardData]);
+
+  // Find user's rank
+  const userRank = useMemo(() => {
+    if (!address || !isConnected) return null;
+    const user = aggregatedUsers.find(u => u.address.toLowerCase() === address.toLowerCase());
+    return user ? user.rank : null;
+  }, [address, isConnected, aggregatedUsers]);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -206,6 +332,11 @@ export default function LeaderboardPage() {
             <p className="text-lg text-white/70">
               Top traders competing to draw the best futures
             </p>
+            {lastUpdated && (
+              <p className="text-sm text-white/50 mt-2">
+                Last updated: {lastUpdated.toLocaleTimeString()}
+              </p>
+            )}
           </motion.div>
 
           {/* Stats Cards */}
@@ -216,10 +347,10 @@ export default function LeaderboardPage() {
             transition={{ delay: 0.2 }}
           >
             {[
-              { label: 'Total Traders', value: '1,247', icon: '👥' },
-              { label: 'Total Volume', value: '$2.4M', icon: '💰' },
-              { label: 'Positions Today', value: '342', icon: '📊' },
-              { label: 'Avg Win Rate', value: '58.2%', icon: '🎯' },
+              { label: 'Total Traders', value: stats.totalTraders.toLocaleString(), icon: '👥' },
+              { label: 'Total Volume', value: formatPnL(stats.totalVolume), icon: '💰' },
+              { label: 'Positions Today', value: stats.positionsToday.toString(), icon: '📊' },
+              { label: 'Avg Win Rate', value: `${stats.avgWinRate.toFixed(1)}%`, icon: '🎯' },
             ].map((stat, i) => (
               <motion.div
                 key={stat.label}
@@ -236,28 +367,46 @@ export default function LeaderboardPage() {
             ))}
           </motion.div>
 
-          {/* Time Filter Tabs */}
+          {/* Sort Controls */}
           <motion.div
             className="flex justify-center gap-2 mb-8"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3 }}
           >
-            {(['all', 'monthly', 'weekly', 'daily'] as TimeFilter[]).map((filter) => (
+            {(['pnl', 'timestamp'] as SortBy[]).map((sort) => (
               <motion.button
-                key={filter}
-                onClick={() => setTimeFilter(filter)}
-                className={`px-4 py-2 rounded-lg font-bold text-sm border-3 transition-all ${timeFilter === filter
+                key={sort}
+                onClick={() => setSortBy(sort)}
+                className={`px-4 py-2 rounded-lg font-bold text-sm border-3 transition-all ${sortBy === sort
                   ? 'bg-[#C1FF72] text-[#1800AD] border-[#0a0014] shadow-[3px_3px_0_0_#0a0014]'
                   : 'bg-[#1800AD]/60 text-[#C1FF72] border-[#C1FF72]/50 hover:border-[#C1FF72]'
                   }`}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
-                {filter.charAt(0).toUpperCase() + filter.slice(1)}
+                {sort === 'pnl' ? '💰 By PnL' : '⏰ Recent'}
               </motion.button>
             ))}
           </motion.div>
+
+          {/* Error State */}
+          {error && (
+            <motion.div
+              className="mb-8 p-4 bg-red-500/20 border-2 border-red-500 rounded-xl text-red-400"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              <p className="font-bold">Error loading leaderboard</p>
+              <p className="text-sm">{error}</p>
+              <button
+                onClick={fetchLeaderboard}
+                className="mt-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
+              >
+                Retry
+              </button>
+            </motion.div>
+          )}
 
           {/* Leaderboard Table */}
           <motion.div
@@ -274,103 +423,158 @@ export default function LeaderboardPage() {
               <div className="col-span-1 text-center">Win Rate</div>
               <div className="col-span-2 text-center">Trades</div>
               <div className="col-span-2 text-center">Best Trade</div>
-              <div className="col-span-1 text-center">🔥 Streak</div>
+              <div className="col-span-1 text-center">Accuracy</div>
             </div>
 
+            {/* Loading State */}
+            {loading && (
+              <div className="p-8 text-center text-white/60">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#C1FF72]"></div>
+                <p className="mt-2">Loading leaderboard...</p>
+              </div>
+            )}
+
+            {/* Empty State */}
+            {!loading && !error && aggregatedUsers.length === 0 && (
+              <div className="p-8 text-center text-white/60">
+                <p className="text-xl mb-2">No positions yet</p>
+                <p className="text-sm">Be the first to make a trade!</p>
+              </div>
+            )}
+
             {/* Table Body */}
-            <motion.div
-              variants={containerVariants}
-              initial="hidden"
-              animate="visible"
-            >
-              <AnimatePresence>
-                {mockLeaderboardData.map((trader) => (
-                  <motion.div
-                    key={trader.rank}
-                    variants={itemVariants}
-                    transition={{ duration: 0.4, ease: "easeInOut" }}
-                    className={`grid grid-cols-1 md:grid-cols-12 gap-4 px-6 py-5 border-b border-[#C1FF72]/20 transition-all cursor-pointer ${hoveredRank === trader.rank ? 'bg-[#1800AD]/40' : ''
-                      } ${trader.rank <= 3 ? 'bg-gradient-to-r from-[#1800AD]/20 to-transparent' : ''}`}
-                    onMouseEnter={() => setHoveredRank(trader.rank)}
-                    onMouseLeave={() => setHoveredRank(null)}
-                    whileHover={{ x: 4 }}
-                  >
-                    {/* Mobile Layout */}
-                    <div className="md:hidden space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <span className={`inline-flex items-center justify-center w-10 h-10 rounded-lg font-bold text-lg ${getRankStyle(trader.rank)}`}>
-                            {getRankBadge(trader.rank)}
-                          </span>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-2xl">{trader.avatar}</span>
-                              <span className="font-bold text-[#C1FF72]">{trader.username}</span>
+            {!loading && aggregatedUsers.length > 0 && (
+              <motion.div
+                variants={containerVariants}
+                initial="hidden"
+                animate="visible"
+              >
+                <AnimatePresence>
+                  {aggregatedUsers.map((trader) => {
+                    const isCurrentUser = address && trader.address.toLowerCase() === address.toLowerCase();
+                    return (
+                      <motion.div
+                        key={trader.address}
+                        variants={itemVariants}
+                        transition={{ duration: 0.4, ease: "easeInOut" }}
+                        className={`grid grid-cols-1 md:grid-cols-12 gap-4 px-6 py-5 border-b border-[#C1FF72]/20 transition-all cursor-pointer ${
+                          hoveredRank === trader.rank ? 'bg-[#1800AD]/40' : ''
+                        } ${trader.rank <= 3 ? 'bg-gradient-to-r from-[#1800AD]/20 to-transparent' : ''} ${
+                          isCurrentUser ? 'ring-2 ring-[#C1FF72] bg-[#C1FF72]/10' : ''
+                        }`}
+                        onMouseEnter={() => setHoveredRank(trader.rank)}
+                        onMouseLeave={() => setHoveredRank(null)}
+                        whileHover={{ x: 4 }}
+                      >
+                        {/* Mobile Layout */}
+                        <div className="md:hidden space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <span className={`inline-flex items-center justify-center w-10 h-10 rounded-lg font-bold text-lg ${getRankStyle(trader.rank)}`}>
+                                {getRankBadge(trader.rank)}
+                              </span>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-2xl">{getAvatar(trader.address)}</span>
+                                  <span className="font-bold text-[#C1FF72]">{getUsername(trader.address)}</span>
+                                  {isCurrentUser && <span className="text-xs bg-[#C1FF72] text-[#1800AD] px-2 py-0.5 rounded">You</span>}
+                                </div>
+                                <span className="text-xs text-white/50 font-mono">{formatAddress(trader.address)}</span>
+                              </div>
                             </div>
-                            <span className="text-xs text-white/50 font-mono">{formatAddress(trader.address)}</span>
+                            <div className="text-right">
+                              <div className={`text-lg font-bold ${trader.totalPnL >= 0 ? 'text-[#C1FF72]' : 'text-red-400'}`}>
+                                {formatPnL(trader.totalPnL, true)}
+                              </div>
+                              <div className="text-xs text-white/50">{trader.winRate.toFixed(1)}% Win</div>
+                            </div>
+                          </div>
+                          <div className="flex justify-between text-sm text-white/70">
+                            <span>{trader.totalTrades} trades</span>
+                            <span>Best: {formatPnL(trader.bestTrade, true)}</span>
+                            <span>Avg: {(() => {
+                              if (trader.positions.length === 0) return '0';
+                              const avg = trader.positions.reduce((sum, p) => sum + (p.accuracy || 0), 0) / trader.positions.length;
+                              return avg.toFixed(1);
+                            })()}%</span>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <div className="text-lg font-bold text-[#C1FF72]">{formatPnL(trader.totalPnL)}</div>
-                          <div className="text-xs text-white/50">{trader.winRate}% Win</div>
-                        </div>
-                      </div>
-                      <div className="flex justify-between text-sm text-white/70">
-                        <span>{trader.totalTrades} trades</span>
-                        <span>Best: {formatPnL(trader.bestTrade)}</span>
-                        <span>🔥 {trader.streak}</span>
-                      </div>
-                    </div>
 
-                    {/* Desktop Layout */}
-                    <div className="hidden md:contents">
-                      <div className="col-span-1 flex items-center justify-center">
-                        <motion.span
-                          className={`inline-flex items-center justify-center w-10 h-10 rounded-lg font-bold text-lg ${getRankStyle(trader.rank)}`}
-                          whileHover={{ scale: 1.1, rotate: trader.rank <= 3 ? [0, -10, 10, 0] : 0 }}
-                          animate={trader.rank === 1 ? { scale: [1, 1.1, 1] } : {}}
-                          transition={trader.rank === 1 ? { duration: 1.5, repeat: Infinity } : {}}
-                        >
-                          {getRankBadge(trader.rank)}
-                        </motion.span>
-                      </div>
-                      <div className="col-span-3 flex items-center gap-3">
-                        <span className="text-3xl">{trader.avatar}</span>
-                        <div>
-                          <div className="font-bold text-[#C1FF72]">{trader.username}</div>
-                          <div className="text-xs text-white/50 font-mono">{formatAddress(trader.address)}</div>
+                        {/* Desktop Layout */}
+                        <div className="hidden md:contents">
+                          <div className="col-span-1 flex items-center justify-center">
+                            <motion.span
+                              className={`inline-flex items-center justify-center w-10 h-10 rounded-lg font-bold text-lg ${getRankStyle(trader.rank)}`}
+                              whileHover={{ scale: 1.1, rotate: trader.rank <= 3 ? [0, -10, 10, 0] : 0 }}
+                              animate={trader.rank === 1 ? { scale: [1, 1.1, 1] } : {}}
+                              transition={trader.rank === 1 ? { duration: 1.5, repeat: Infinity } : {}}
+                            >
+                              {getRankBadge(trader.rank)}
+                            </motion.span>
+                          </div>
+                          <div className="col-span-3 flex items-center gap-3">
+                            <span className="text-3xl">{getAvatar(trader.address)}</span>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-[#C1FF72]">{getUsername(trader.address)}</span>
+                                {isCurrentUser && <span className="text-xs bg-[#C1FF72] text-[#1800AD] px-2 py-0.5 rounded">You</span>}
+                              </div>
+                              <div className="text-xs text-white/50 font-mono">{formatAddress(trader.address)}</div>
+                            </div>
+                          </div>
+                          <div className="col-span-2 flex items-center justify-end">
+                            <span className={`font-bold text-lg ${trader.totalPnL >= 0 ? 'text-[#C1FF72]' : 'text-red-400'}`}>
+                              {formatPnL(trader.totalPnL, true)}
+                            </span>
+                          </div>
+                          <div className="col-span-1 flex items-center justify-center">
+                            <span className="text-white/80">{trader.winRate.toFixed(1)}%</span>
+                          </div>
+                          <div className="col-span-2 flex items-center justify-center">
+                            <span className="text-white/80">{trader.totalTrades}</span>
+                          </div>
+                          <div className="col-span-2 flex items-center justify-center">
+                            <span className="text-[#C1FF72]/80">{formatPnL(trader.bestTrade, true)}</span>
+                          </div>
+                          <div className="col-span-1 flex items-center justify-center">
+                            <span className="text-white/80">
+                              {(() => {
+                                if (trader.positions.length === 0) return '0';
+                                const avgAccuracy = trader.positions.reduce((sum, p) => sum + (p.accuracy || 0), 0) / trader.positions.length;
+                                return avgAccuracy.toFixed(1);
+                              })()}%
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                      <div className="col-span-2 flex items-center justify-end">
-                        <span className={`font-bold text-lg ${trader.totalPnL >= 0 ? 'text-[#C1FF72]' : 'text-red-400'}`}>
-                          {formatPnL(trader.totalPnL)}
-                        </span>
-                      </div>
-                      <div className="col-span-1 flex items-center justify-center">
-                        <div className="flex items-center gap-1">
-                          <span className="text-white/80">{trader.winRate}%</span>
-                        </div>
-                      </div>
-                      <div className="col-span-2 flex items-center justify-center">
-                        <span className="text-white/80">{trader.totalTrades}</span>
-                      </div>
-                      <div className="col-span-2 flex items-center justify-center">
-                        <span className="text-[#C1FF72]/80">{formatPnL(trader.bestTrade)}</span>
-                      </div>
-                      <div className="col-span-1 flex items-center justify-center">
-                        <motion.div
-                          className="flex items-center gap-1 px-2 py-1 bg-orange-500/20 rounded-full"
-                          animate={trader.streak >= 5 ? { scale: [1, 1.1, 1] } : {}}
-                          transition={{ duration: 0.5, repeat: Infinity }}
-                        >
-                          <span className="text-orange-400 font-bold">{trader.streak}</span>
-                        </motion.div>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-            </motion.div>
+                      </motion.div>
+                    );
+                  })}
+                </AnimatePresence>
+              </motion.div>
+            )}
+
+            {/* Pagination */}
+            {!loading && total > limit && (
+              <div className="px-6 py-4 border-t border-[#C1FF72]/20 flex justify-between items-center">
+                <button
+                  onClick={() => setOffset(Math.max(0, offset - limit))}
+                  disabled={offset === 0}
+                  className="px-4 py-2 bg-[#1800AD]/60 text-[#C1FF72] rounded-lg border-2 border-[#C1FF72]/50 disabled:opacity-50 disabled:cursor-not-allowed hover:border-[#C1FF72]"
+                >
+                  Previous
+                </button>
+                <span className="text-white/60">
+                  Showing {offset + 1}-{Math.min(offset + limit, total)} of {total}
+                </span>
+                <button
+                  onClick={() => setOffset(offset + limit)}
+                  disabled={offset + limit >= total}
+                  className="px-4 py-2 bg-[#1800AD]/60 text-[#C1FF72] rounded-lg border-2 border-[#C1FF72]/50 disabled:opacity-50 disabled:cursor-not-allowed hover:border-[#C1FF72]"
+                >
+                  Next
+                </button>
+              </div>
+            )}
           </motion.div>
 
           {/* Your Rank Card */}
@@ -380,49 +584,34 @@ export default function LeaderboardPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6 }}
           >
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="text-5xl">🎮</div>
-                <div>
-                  <h3 className="text-xl font-bold text-[#C1FF72]">Your Ranking</h3>
-                  <p className="text-white/60">Connect your wallet to see your position</p>
+            {isConnected && address && userStats ? (
+              <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="text-5xl">🎮</div>
+                  <div>
+                    <h3 className="text-xl font-bold text-[#C1FF72]">Your Ranking</h3>
+                    <div className="text-white/80 space-y-1">
+                      <p>Rank: {userRank ? `#${userRank}` : 'Not ranked'}</p>
+                      <p>Total PnL: {formatPnL(userStats.totalPnL, false)}</p>
+                      <p>Win Rate: {userStats.winRate.toFixed(1)}%</p>
+                      <p>Total Positions: {userStats.totalPositions}</p>
+                    </div>
+                  </div>
                 </div>
+                <ConnectButton />
               </div>
-              <motion.button
-                className="px-6 py-3 bg-[#C1FF72] text-[#1800AD] font-bold rounded-lg border-3 border-[#0a0014] shadow-[4px_4px_0_0_#0a0014]"
-                whileHover={{ x: -2, y: -2, boxShadow: '6px 6px 0 0 #0a0014' }}
-                whileTap={{ x: 2, y: 2, boxShadow: '2px 2px 0 0 #0a0014' }}
-              >
-                Connect Wallet
-              </motion.button>
-            </div>
-          </motion.div>
-
-          {/* Fun Facts */}
-          <motion.div
-            className="mt-8 grid md:grid-cols-3 gap-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.8 }}
-          >
-            {[
-              { title: '🎨 Most Creative', desc: 'NyanMaster drew a perfect cat pattern', stat: '+45,000 MNT' },
-              { title: '🚀 Biggest Win Today', desc: 'LineWhisperer called the pump', stat: '+12,340 MNT' },
-              { title: '🔥 Longest Streak', desc: 'NyanMaster on a 12 win streak!', stat: '12 Wins' },
-            ].map((fact, i) => (
-              <motion.div
-                key={fact.title}
-                className="p-5 bg-[#1800AD]/40 border-2 border-[#C1FF72]/50 rounded-xl"
-                whileHover={{ scale: 1.02, borderColor: '#C1FF72' }}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.9 + i * 0.1 }}
-              >
-                <h4 className="text-lg font-bold text-[#C1FF72] mb-2">{fact.title}</h4>
-                <p className="text-sm text-white/70 mb-2">{fact.desc}</p>
-                <span className="text-[#C1FF72] font-bold">{fact.stat}</span>
-              </motion.div>
-            ))}
+            ) : (
+              <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="text-5xl">🎮</div>
+                  <div>
+                    <h3 className="text-xl font-bold text-[#C1FF72]">Your Ranking</h3>
+                    <p className="text-white/60">Connect your wallet to see your position</p>
+                  </div>
+                </div>
+                <ConnectButton />
+              </div>
+            )}
           </motion.div>
         </div>
       </NoiseEffect>

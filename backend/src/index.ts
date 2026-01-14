@@ -11,6 +11,7 @@ import { FuturesContractStorage } from './contract/futuresContractStorage.js';
 import { PNLCalculator } from './pnl/pnlCalculator.js';
 import { PositionService } from './futures/positionService.js';
 import { PositionCloser } from './futures/positionCloser.js';
+import { PositionDatabase } from './database/positionDatabase.js';
 import logger from './utils/logger.js';
 import config from './config/config.js';
 
@@ -33,6 +34,7 @@ class MNTPriceOracleApp {
   private pnlCalculator?: PNLCalculator;
   private positionService?: PositionService;
   private positionCloser?: PositionCloser;
+  private positionDatabase?: PositionDatabase;
 
   constructor() {
     logger.info('Initializing MNT Price Oracle & Line Futures', {
@@ -64,6 +66,11 @@ class MNTPriceOracleApp {
       this.contractStorage
     );
 
+    // Initialize position database (for leaderboard)
+    this.positionDatabase = new PositionDatabase();
+    this.positionDatabase.initialize();
+    logger.info('Position database initialized');
+
     // Initialize futures components if contract address is configured
     if (config.futuresContractAddress) {
       logger.info('Initializing futures components');
@@ -84,7 +91,8 @@ class MNTPriceOracleApp {
         this.pnlCalculator,
         this.eigenDASubmitter,
         this.contractStorage,
-        this.retrievalService
+        this.retrievalService,
+        this.positionDatabase
       );
       
       this.positionCloser = new PositionCloser(
@@ -101,7 +109,8 @@ class MNTPriceOracleApp {
       this.orchestrator,
       this.predictionService,
       this.positionService,
-      this.positionCloser
+      this.positionCloser,
+      this.positionDatabase
     );
 
     this.setupSignalHandlers();
@@ -161,6 +170,12 @@ class MNTPriceOracleApp {
 
       // Stop orchestrator
       this.orchestrator.stop();
+
+      // Close database connection
+      if (this.positionDatabase) {
+        this.positionDatabase.close();
+        logger.info('Position database connection closed');
+      }
 
       logger.info('MNT Price Oracle & Line Futures application stopped successfully');
     } catch (error) {

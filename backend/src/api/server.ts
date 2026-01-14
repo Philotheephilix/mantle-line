@@ -6,6 +6,7 @@ import { LiquidationRequest } from '../types/index.js';
 import { PredictionService } from '../futures/predictionService.js';
 import { PositionService } from '../futures/positionService.js';
 import { PositionCloser } from '../futures/positionCloser.js';
+import { PositionDatabase } from '../database/positionDatabase.js';
 import logger from '../utils/logger.js';
 import config from '../config/config.js';
 
@@ -17,6 +18,7 @@ export class APIServer {
   private predictionService?: PredictionService;
   private positionService?: PositionService;
   private positionCloser?: PositionCloser;
+  private positionDatabase?: PositionDatabase;
   private server: any = null;
 
   constructor(
@@ -25,7 +27,8 @@ export class APIServer {
     orchestrator: Orchestrator,
     predictionService?: PredictionService,
     positionService?: PositionService,
-    positionCloser?: PositionCloser
+    positionCloser?: PositionCloser,
+    positionDatabase?: PositionDatabase
   ) {
     this.app = express();
     this.retrievalService = retrievalService;
@@ -34,6 +37,7 @@ export class APIServer {
     this.predictionService = predictionService;
     this.positionService = positionService;
     this.positionCloser = positionCloser;
+    this.positionDatabase = positionDatabase;
 
     this.setupMiddleware();
     this.setupRoutes();
@@ -113,6 +117,12 @@ export class APIServer {
       this.app.post('/api/admin/close-expired', this.handleCloseExpired.bind(this));
     }
 
+    if (this.positionDatabase) {
+      this.app.get('/api/leaderboard', this.handleLeaderboard.bind(this));
+      this.app.get('/api/leaderboard/user/:address', this.handleUserStats.bind(this));
+      this.app.get('/api/positions/closed', this.handleClosedPositions.bind(this));
+    }
+
     // Root endpoint
     this.app.get('/', (req, res) => {
       const endpoints = [
@@ -139,6 +149,12 @@ export class APIServer {
       if (this.positionCloser) {
         endpoints.push('POST /api/admin/close-position');
         endpoints.push('POST /api/admin/close-expired');
+      }
+
+      if (this.positionDatabase) {
+        endpoints.push('GET /api/leaderboard?limit=<number>&offset=<number>&sort=<pnl|timestamp>');
+        endpoints.push('GET /api/leaderboard/user/:address');
+        endpoints.push('GET /api/positions/closed?limit=<number>&offset=<number>&user=<address>');
       }
 
       res.json({
@@ -584,6 +600,82 @@ export class APIServer {
       res.status(500).json({ error: 'Internal server error' });
     });
   }
+
+  /**
+   * Handle leaderboard request
+   */
+  private handleLeaderboard = async (req: Request, res: Response): Promise<void> => {
+    try {
+      if (!this.positionDatabase) {
+        res.status(503).json({ error: 'Leaderboard service not available' });
+        return;
+      }
+
+      const limit = parseInt(req.query.limit as string) || 100;
+      const offset = parseInt(req.query.offset as string) || 0;
+      const sortBy = (req.query.sort as 'pnl' | 'timestamp') || 'pnl';
+
+      const result = this.positionDatabase.getLeaderboard(limit, offset, sortBy);
+
+      res.json(result);
+    } catch (error) {
+      logger.error('Failed to get leaderboard', error);
+      res.status(500).json({ error: 'Failed to get leaderboard' });
+    }
+  };
+
+  /**
+   * Handle user stats request
+   */
+  private handleUserStats = async (req: Request, res: Response): Promise<void> => {
+    try {
+      if (!this.positionDatabase) {
+        res.status(503).json({ error: 'Leaderboard service not available' });
+        return;
+      }
+
+      const address = req.params.address;
+      if (!address || !/^0x[a-fA-F0-9]{40}$/.test(address)) {
+        res.status(400).json({ error: 'Invalid Ethereum address' });
+        return;
+      }
+
+      const stats = this.positionDatabase.getUserStats(address);
+
+      res.json(stats);
+    } catch (error) {
+      logger.error('Failed to get user stats', error);
+      res.status(500).json({ error: 'Failed to get user stats' });
+    }
+  };
+
+  /**
+   * Handle closed positions request
+   */
+  private handleClosedPositions = async (req: Request, res: Response): Promise<void> => {
+    try {
+      if (!this.positionDatabase) {
+        res.status(503).json({ error: 'Leaderboard service not available' });
+        return;
+      }
+
+      const limit = parseInt(req.query.limit as string) || 100;
+      const offset = parseInt(req.query.offset as string) || 0;
+      const user = req.query.user as string;
+
+      let result;
+      if (user && /^0x[a-fA-F0-9]{40}$/.test(user)) {
+        result = this.positionDatabase.getPositionsByUser(user, limit, offset);
+      } else {
+        result = this.positionDatabase.getAllPositions(limit, offset);
+      }
+
+      res.json(result);
+    } catch (error) {
+      logger.error('Failed to get closed positions', error);
+      res.status(500).json({ error: 'Failed to get closed positions' });
+    }
+  };
 
   /**
    * Calculate confidence score based on price count
