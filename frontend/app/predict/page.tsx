@@ -160,9 +160,11 @@ export default function PredictPage(_props: { params?: unknown; searchParams?: u
     const minPrice = currentPrice - priceRange;
     const maxPrice = currentPrice + priceRange;
 
-    // Use current REAL time instead of data timestamp
     const nowInSeconds = Math.floor(Date.now() / 1000);
-    const futureStartTime = nowInSeconds + offsetMinutes * 60;
+    const currentMinuteStart = Math.floor(nowInSeconds / 60) * 60;
+    // Start drawing at the next whole minute after lever pull
+    const futureStartTime = currentMinuteStart + 60;
+    const totalDurationSeconds = offsetMinutes * 60;
 
     const sampledPoints = samplePredictionPoints(points, 60);
     console.log('sampled prediction canvas points (<= 60):', sampledPoints);
@@ -288,7 +290,7 @@ export default function PredictPage(_props: { params?: unknown; searchParams?: u
     
     const predictionPoints = sampledPoints.map((point) => {
       const normalizedX = point.x / canvasWidth;
-      const time = futureStartTime + (normalizedX * 60);
+      const time = futureStartTime + normalizedX * totalDurationSeconds;
 
       const normalizedY = point.y / canvasHeight;
       const price = maxPrice - (normalizedY * (maxPrice - minPrice));
@@ -297,13 +299,17 @@ export default function PredictPage(_props: { params?: unknown; searchParams?: u
         x: 0,
         y: 0,
         time: Math.floor(time),
-        price: price,
+        price,
         canvasX: point.x,
         canvasY: point.y,
       };
     });
 
-    setDebugInfo(`+${offsetMinutes}min @ ${new Date(futureStartTime * 1000).toLocaleTimeString()}`);
+    setDebugInfo(
+      `${offsetMinutes}min window starting @ ${new Date(
+        futureStartTime * 1000,
+      ).toLocaleTimeString()}`,
+    );
 
     clearPrediction();
     setSelectedMinute(offsetMinutes);

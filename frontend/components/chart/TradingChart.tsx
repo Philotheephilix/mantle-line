@@ -471,21 +471,6 @@ export function TradingChart({
             </div>
           </div>
 
-          {/* PNL Display with color coding */}
-          <div className={`backdrop-blur px-4 py-2 rounded-lg shadow-[3px_3px_0_0_#0a0014] border-2 ${directionalScore.pnl >= 0
-            ? 'bg-[#C1FF72] border-[#0a0014] text-[#1800AD]'
-            : 'bg-red-500 border-[#0a0014] text-white'
-            }`}>
-            <div className="text-xs font-bold opacity-80 uppercase tracking-wide">Estimated P&L</div>
-            <div className="text-lg font-bold">
-              {directionalScore.pnl >= 0 ? '+' : ''}
-              {directionalScore.pnl.toFixed(4)} ETH
-            </div>
-            <div className="text-xs opacity-75 mt-0.5">
-              Fee: {directionalScore.fee.toFixed(4)} ETH
-            </div>
-          </div>
-
           {/* Max Profit Info */}
           <div className="bg-[#0a0014]/90 backdrop-blur px-4 py-2 rounded-lg text-xs shadow-[2px_2px_0_0_#C1FF72] border-2 border-[#C1FF72]/50">
             <div className="text-[#C1FF72]/90">Max Profit: {directionalScore.maxProfit.toFixed(4)} ETH</div>
