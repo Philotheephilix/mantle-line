@@ -180,6 +180,129 @@ export class RetrievalService {
   }
 
   /**
+   * Get price window for a specific position based on its openTimestamp
+   * Extracts prices from current minute (from start second) and next minute (to complete 60 seconds)
+   * 
+   * @param openTimestamp Position's open timestamp in seconds
+   * @returns PriceWindowPayload with exactly 60 prices covering the position's 60-second window
+   */
+  public async getWindowForPosition(openTimestamp: number): Promise<PriceWindowPayload | null> {
+    try {
+      logger.info('Getting window for position', { openTimestamp });
+
+      // Calculate which seconds we need
+      const startSecond = openTimestamp % 60; // e.g., 20 if position starts at :20
+      const pricesFromCurrentMinute = 60 - startSecond; // e.g., 40 prices
+      const pricesFromNextMinute = startSecond; // e.g., 20 prices
+
+      // Get minute-aligned windows
+      const currentMinuteStart = Math.floor(openTimestamp / 60) * 60;
+      const nextMinuteStart = currentMinuteStart + 60;
+
+      logger.debug('Position window calculation', {
+        openTimestamp,
+        startSecond,
+        pricesFromCurrentMinute,
+        pricesFromNextMinute,
+        currentMinuteStart,
+        nextMinuteStart
+      });
+
+      // Retrieve both windows
+      const currentWindow = await this.getWindow(currentMinuteStart);
+      if (!currentWindow) {
+        logger.warn('Current minute window not found', { currentMinuteStart });
+        return null;
+      }
+
+      // If position starts at second 0, we only need the current minute window
+      if (startSecond === 0) {
+        logger.info('Position starts at minute boundary, using current window only');
+        return {
+          ...currentWindow,
+          windowStart: openTimestamp,
+          windowEnd: openTimestamp + 59
+        };
+      }
+
+      // Retrieve next minute window
+      const nextWindow = await this.getWindow(nextMinuteStart);
+      if (!nextWindow) {
+        logger.warn('Next minute window not found', { 
+          nextMinuteStart,
+          openTimestamp,
+          note: 'Position may have closed before next minute boundary was stored'
+        });
+        // If next window doesn't exist yet, we can't complete the position window
+        // This could happen if position closes very quickly
+        return null;
+      }
+
+      // Extract and combine prices
+      const prices: number[] = [];
+      
+      // From current minute: seconds [startSecond, 59]
+      for (let i = startSecond; i < 60; i++) {
+        prices.push(currentWindow.prices[i]);
+      }
+      
+      // From next minute: seconds [0, startSecond-1]
+      for (let i = 0; i < startSecond; i++) {
+        prices.push(nextWindow.prices[i]);
+      }
+
+      // Validate we have exactly 60 prices
+      if (prices.length !== 60) {
+        logger.error('Price extraction failed', {
+          openTimestamp,
+          expected: 60,
+          actual: prices.length,
+          pricesFromCurrentMinute,
+          pricesFromNextMinute
+        });
+        return null;
+      }
+
+      // Recalculate TWAP and volatility for the combined 60 prices
+      const twap = PriceAggregator.calculateTWAPStatic(prices);
+      const stdDev = PriceAggregator.calculateStdDev(prices);
+      const volatility = (stdDev / twap) * 100; // Percentage of mean
+
+      // Get last price, bid, ask from the last price in the window
+      const lastPrice = prices[prices.length - 1];
+      const bid = lastPrice * 0.9999; // Approximate
+      const ask = lastPrice * 1.0001; // Approximate
+
+      const payload: PriceWindowPayload = {
+        windowStart: openTimestamp,
+        windowEnd: openTimestamp + 59,
+        prices,
+        lastPrice,
+        bid,
+        ask,
+        twap,
+        volatility
+      };
+
+      logger.info('Window for position retrieved successfully', {
+        openTimestamp,
+        priceCount: prices.length,
+        twap,
+        volatility,
+        extractedFrom: {
+          currentMinute: `${startSecond}-59`,
+          nextMinute: `0-${startSecond - 1}`
+        }
+      });
+
+      return payload;
+    } catch (error) {
+      logger.error('Failed to get window for position', { openTimestamp, error });
+      throw error;
+    }
+  }
+
+  /**
    * Get summary statistics for recent windows
    */
   public async getSummaryStats(windowCount: number = 10): Promise<{

@@ -171,9 +171,8 @@ export default function PredictPage(_props: { params?: unknown; searchParams?: u
     const maxPrice = currentPrice + priceRange;
 
     const nowInSeconds = Math.floor(Date.now() / 1000);
-    const currentMinuteStart = Math.floor(nowInSeconds / 60) * 60;
-    // Start drawing at the next whole minute after lever pull
-    const futureStartTime = currentMinuteStart + 60;
+    // Start drawing immediately from current second (position starts at current timestamp)
+    const futureStartTime = nowInSeconds;
     const totalDurationSeconds = offsetMinutes * 60;
 
     let sampledPoints: Array<{ x: number; y: number }>;
