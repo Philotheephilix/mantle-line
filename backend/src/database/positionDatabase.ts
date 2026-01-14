@@ -340,6 +340,79 @@ export class PositionDatabase {
   }
 
   /**
+   * Get total unique user count
+   */
+  public getTotalUserCount(): number {
+    try {
+      const result = this.db.prepare('SELECT COUNT(DISTINCT user_address) as count FROM closed_positions').get();
+      return (result as { count: number }).count;
+    } catch (error) {
+      logger.error('Failed to get total user count', error);
+      return 0;
+    }
+  }
+
+  /**
+   * Get total volume (sum of all amounts)
+   */
+  public getTotalVolume(): string {
+    try {
+      const result = this.db.prepare('SELECT SUM(CAST(amount AS REAL)) as total FROM closed_positions').get();
+      const total = (result as { total: number | null }).total;
+      return total ? total.toString() : '0';
+    } catch (error) {
+      logger.error('Failed to get total volume', error);
+      return '0';
+    }
+  }
+
+  /**
+   * Get positions count for today
+   */
+  public getPositionsToday(): number {
+    try {
+      const now = Math.floor(Date.now() / 1000);
+      const todayStart = Math.floor(now / 86400) * 86400;
+      const result = this.db.prepare(
+        'SELECT COUNT(*) as count FROM closed_positions WHERE close_timestamp >= ?'
+      ).get(todayStart);
+      return (result as { count: number }).count;
+    } catch (error) {
+      logger.error('Failed to get positions today', error);
+      return 0;
+    }
+  }
+
+  /**
+   * Get average win rate across all users
+   */
+  public getAverageWinRate(): number {
+    try {
+      // Calculate win rate per user, then average
+      const userStats = this.db.prepare(`
+        SELECT 
+          user_address,
+          COUNT(*) as total_positions,
+          SUM(CASE WHEN CAST(pnl AS REAL) > 0 THEN 1 ELSE 0 END) as winning_positions
+        FROM closed_positions
+        GROUP BY user_address
+      `).all() as Array<{ user_address: string; total_positions: number; winning_positions: number }>;
+
+      if (userStats.length === 0) return 0;
+
+      const totalWinRate = userStats.reduce((sum, user) => {
+        const winRate = user.total_positions > 0 ? (user.winning_positions / user.total_positions) * 100 : 0;
+        return sum + winRate;
+      }, 0);
+
+      return totalWinRate / userStats.length;
+    } catch (error) {
+      logger.error('Failed to get average win rate', error);
+      return 0;
+    }
+  }
+
+  /**
    * Close the database connection
    */
   public close(): void {

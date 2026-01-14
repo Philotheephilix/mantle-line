@@ -7,7 +7,7 @@ import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { formatEther, parseEther } from 'ethers';
 import { Header, Footer } from '@/components/layout';
 import { NoiseEffect } from '@/components/ui/NoiseEffect';
-import { getLeaderboard, getUserStats } from '@/lib/api/leaderboard';
+import { getLeaderboard, getUserStats, getLeaderboardStats } from '@/lib/api/leaderboard';
 import type { LeaderboardEntry, UserStats } from '@/types/leaderboard';
 
 type TimeFilter = 'all' | 'monthly' | 'weekly' | 'daily';
@@ -70,6 +70,13 @@ export default function LeaderboardPage() {
   const [offset, setOffset] = useState(0);
   const [total, setTotal] = useState(0);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [leaderboardStats, setLeaderboardStats] = useState<{
+    totalTraders: number;
+    totalVolume: string;
+    positionsToday: number;
+    avgWinRate: number;
+  } | null>(null);
+  const [statsLoading, setStatsLoading] = useState(true);
 
   // Aggregate positions by user address
   const aggregatedUsers = useMemo(() => {
@@ -150,6 +157,17 @@ export default function LeaderboardPage() {
     }
   };
 
+  // Fetch leaderboard statistics
+  const fetchLeaderboardStats = async () => {
+    try {
+      const stats = await getLeaderboardStats();
+      setLeaderboardStats(stats);
+    } catch (err) {
+      console.error('Failed to fetch leaderboard stats:', err);
+      // Don't set error state for stats - it's not critical
+    }
+  };
+
   // Fetch user stats when wallet is connected
   const fetchUserStats = async () => {
     if (!address || !isConnected) {
@@ -169,6 +187,7 @@ export default function LeaderboardPage() {
   // Initial load
   useEffect(() => {
     fetchLeaderboard();
+    fetchLeaderboardStats();
   }, [limit, offset, sortBy]);
 
   // Fetch user stats when address changes
@@ -180,6 +199,7 @@ export default function LeaderboardPage() {
   useEffect(() => {
     const interval = setInterval(() => {
       fetchLeaderboard();
+      fetchLeaderboardStats();
       if (isConnected && address) {
         fetchUserStats();
       }
@@ -264,8 +284,36 @@ export default function LeaderboardPage() {
     }).format(num);
   };
 
-  // Calculate stats from aggregated data
+  // Use stats from API (accurate across all data), fallback to calculated if not available
   const stats = useMemo(() => {
+    console.log('Calculating stats, leaderboardStats:', leaderboardStats);
+    if (leaderboardStats) {
+      // Convert totalVolume from wei to ETH
+      let totalVolumeEth = 0;
+      try {
+        totalVolumeEth = parseFloat(formatEther(leaderboardStats.totalVolume));
+      } catch {
+        totalVolumeEth = parseFloat(leaderboardStats.totalVolume) / 1e18;
+      }
+
+      console.log('Using API stats:', {
+        totalTraders: leaderboardStats.totalTraders,
+        totalVolume: totalVolumeEth,
+        positionsToday: leaderboardStats.positionsToday,
+        avgWinRate: leaderboardStats.avgWinRate,
+      });
+
+      return {
+        totalTraders: leaderboardStats.totalTraders,
+        totalVolume: totalVolumeEth,
+        positionsToday: leaderboardStats.positionsToday,
+        avgWinRate: leaderboardStats.avgWinRate,
+      };
+    }
+
+    console.log('Falling back to calculated stats from current page');
+
+    // Fallback to calculated stats from current page (less accurate, only shows current page users)
     if (aggregatedUsers.length === 0) {
       return {
         totalTraders: 0,
@@ -299,7 +347,7 @@ export default function LeaderboardPage() {
       positionsToday,
       avgWinRate,
     };
-  }, [aggregatedUsers, leaderboardData]);
+  }, [leaderboardStats, aggregatedUsers, leaderboardData]);
 
   // Find user's rank
   const userRank = useMemo(() => {

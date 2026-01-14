@@ -121,6 +121,7 @@ export class APIServer {
       this.app.get('/api/leaderboard', this.handleLeaderboard.bind(this));
       this.app.get('/api/leaderboard/user/:address', this.handleUserStats.bind(this));
       this.app.get('/api/positions/closed', this.handleClosedPositions.bind(this));
+      this.app.get('/api/leaderboard/stats', this.handleLeaderboardStats.bind(this));
     }
 
     // Root endpoint
@@ -674,6 +675,33 @@ export class APIServer {
     } catch (error) {
       logger.error('Failed to get closed positions', error);
       res.status(500).json({ error: 'Failed to get closed positions' });
+    }
+  };
+
+  /**
+   * Handle leaderboard stats request
+   */
+  private handleLeaderboardStats = async (req: Request, res: Response): Promise<void> => {
+    try {
+      if (!this.positionDatabase) {
+        res.status(503).json({ error: 'Leaderboard service not available' });
+        return;
+      }
+
+      const totalTraders = this.positionDatabase.getTotalUserCount();
+      const totalVolume = this.positionDatabase.getTotalVolume();
+      const positionsToday = this.positionDatabase.getPositionsToday();
+      const avgWinRate = this.positionDatabase.getAverageWinRate();
+
+      res.json({
+        totalTraders,
+        totalVolume,
+        positionsToday,
+        avgWinRate
+      });
+    } catch (error) {
+      logger.error('Failed to get leaderboard stats', error);
+      res.status(500).json({ error: 'Failed to get leaderboard stats' });
     }
   };
 

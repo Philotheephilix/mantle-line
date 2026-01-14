@@ -97,3 +97,31 @@ export async function getClosedPositions(
 
   return response.json();
 }
+
+/**
+ * Fetch leaderboard statistics (total traders, volume, etc.)
+ */
+export async function getLeaderboardStats(): Promise<{
+  totalTraders: number;
+  totalVolume: string;
+  positionsToday: number;
+  avgWinRate: number;
+}> {
+  const url = `${DEFAULT_BACKEND_URL}/api/leaderboard/stats`;
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(
+      error.error || `Failed to fetch leaderboard stats: ${response.status}`
+    );
+  }
+
+  return response.json();
+}
