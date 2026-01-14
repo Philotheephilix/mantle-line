@@ -60,7 +60,7 @@ export function TradingChart({
     leverage: 10,      // 10x default leverage
     feePercentage: 200 // 2% fee (matches backend)
   });
-  
+
   // Check for mobile screen size
   useEffect(() => {
     const checkMobile = () => {
@@ -70,12 +70,12 @@ export function TradingChart({
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
-  
+
   // Track client-side mounting to avoid hydration mismatch
   useEffect(() => {
     setIsMounted(true);
   }, []);
-  
+
   // Get current time from latest data point
   const currentTime = data.length > 0 ? data[data.length - 1].time : undefined;
   const currentPrice = data.length > 0 ? data[data.length - 1].value : null;
@@ -94,41 +94,41 @@ export function TradingChart({
         if (!chart || !series || !chartContainer) return;
 
         const timeScale = chart.timeScale();
-        
+
         // Get the chart container's position relative to its parent
         // The parent is the div with position: relative that contains ChartCanvas and overlays
         const chartRect = chartContainer.getBoundingClientRect();
         const parentElement = chartContainer.parentElement;
         if (!parentElement) return;
-        
+
         const parentRect = parentElement.getBoundingClientRect();
         const offsetX = chartRect.left - parentRect.left;
         const offsetY = chartRect.top - parentRect.top;
-        
+
         // Convert ALL price points to pixel coordinates for the rainbow trail
         const trailPoints: Array<{ x: number; y: number }> = [];
-        
+
         // Use ALL data points for the full rainbow trail
         for (const point of data) {
           const x = timeScale.timeToCoordinate(point.time as Time);
           const y = series.priceToCoordinate(point.value);
-          
+
           // Adjust coordinates to be relative to the parent container (where NyanCat is positioned)
           if (x !== null && y !== null) {
-            trailPoints.push({ 
-              x: x + offsetX, 
-              y: y + offsetY 
+            trailPoints.push({
+              x: x + offsetX,
+              y: y + offsetY
             });
           }
         }
-        
+
         setRainbowTrailPoints(trailPoints);
-        
+
         // Position cat at the end of the rainbow trail (current price point)
         // Cat's tail should connect seamlessly to the rainbow
         if (trailPoints.length > 0) {
           const lastPoint = trailPoints[trailPoints.length - 1];
-          
+
           // Position cat at the last price point - tail connects to rainbow
           setNyanPosition({
             x: lastPoint.x,
@@ -142,18 +142,18 @@ export function TradingChart({
 
     // Update immediately and on scroll/zoom
     updatePositions();
-    
+
     const interval = setInterval(updatePositions, 50);
-    
+
     // Also update on visible range changes
     const handleVisibleRangeChange = () => {
       updatePositions();
     };
-    
+
     if (chartRef.current?.chart) {
       chartRef.current.chart.timeScale().subscribeVisibleLogicalRangeChange(handleVisibleRangeChange);
     }
-    
+
     return () => {
       clearInterval(interval);
       if (chartRef.current?.chart) {
@@ -166,20 +166,20 @@ export function TradingChart({
   // Interpolate prediction curve to get predicted price at a specific time
   const interpolatePrediction = useCallback((time: number, points: PredictionPoint[]): number | null => {
     if (points.length === 0) return null;
-    
+
     // Sort points by time to ensure correct interpolation
     const sortedPoints = [...points].sort((a, b) => a.time - b.time);
-    
+
     // Check if time is outside prediction range
     if (time < sortedPoints[0].time || time > sortedPoints[sortedPoints.length - 1].time) {
       return null;
     }
-    
+
     // Find the two points to interpolate between
     for (let i = 0; i < sortedPoints.length - 1; i++) {
       const p1 = sortedPoints[i];
       const p2 = sortedPoints[i + 1];
-      
+
       if (time >= p1.time && time <= p2.time) {
         // Linear interpolation
         const t = (time - p1.time) / (p2.time - p1.time);
@@ -187,7 +187,7 @@ export function TradingChart({
         return predictedPrice;
       }
     }
-    
+
     return null;
   }, []);
 
@@ -322,7 +322,7 @@ export function TradingChart({
     const sortedPredictionPoints = [...currentPoints].sort((a, b) => a.time - b.time);
     const predictionStartTime = sortedPredictionPoints[0]?.time;
     const predictionEndTime = sortedPredictionPoints[sortedPredictionPoints.length - 1]?.time;
-    
+
     if (!predictionStartTime || !predictionEndTime) {
       setOverlapPoints([]);
       return;
@@ -331,31 +331,31 @@ export function TradingChart({
     const overlaps: Array<{ time: number; price: number }> = [];
     const priceTolerance = 0.005; // 0.5% price tolerance (tighter)
     const minTimeGap = 5; // Minimum 5 seconds between overlap marks (prevents excessive marking)
-    
+
     // Filter data to only check points that are in the prediction time range
     // We check all prices within the prediction window, regardless of current time
-    const relevantData = data.filter((p) => 
-      p.time >= predictionStartTime && 
+    const relevantData = data.filter((p) =>
+      p.time >= predictionStartTime &&
       p.time <= predictionEndTime
     );
-    
+
     let lastMarkedTime: number | null = null;
-    
+
     // Track previous state to detect crossings
     let prevActualPrice: number | null = null;
     let prevPredictedPrice: number | null = null;
-    
+
     for (const pricePoint of relevantData) {
       const predictedPrice = interpolatePrediction(pricePoint.time, sortedPredictionPoints);
-      
+
       if (predictedPrice === null) continue;
-      
+
       const priceDiff = Math.abs(predictedPrice - pricePoint.value);
       const pricePercent = priceDiff / pricePoint.value;
-      
+
       // Detect if price is close to prediction
       const isClose = pricePercent < priceTolerance;
-      
+
       // Detect crossing: price goes from above to below or vice versa
       let isCrossing = false;
       if (prevActualPrice !== null && prevPredictedPrice !== null) {
@@ -363,20 +363,20 @@ export function TradingChart({
         const isAbove = pricePoint.value > predictedPrice;
         isCrossing = wasAbove !== isAbove;
       }
-      
+
       // Mark overlap if:
       // 1. Price is close to prediction AND
       // 2. (It's a crossing OR it's the first point close to prediction) AND
       // 3. Enough time has passed since last mark
-      if (isClose && (isCrossing || lastMarkedTime === null) && 
-          (lastMarkedTime === null || (pricePoint.time - lastMarkedTime) >= minTimeGap)) {
+      if (isClose && (isCrossing || lastMarkedTime === null) &&
+        (lastMarkedTime === null || (pricePoint.time - lastMarkedTime) >= minTimeGap)) {
         overlaps.push({
           time: pricePoint.time,
           price: pricePoint.value,
         });
         lastMarkedTime = pricePoint.time;
       }
-      
+
       prevActualPrice = pricePoint.value;
       prevPredictedPrice = predictedPrice;
     }
@@ -391,10 +391,10 @@ export function TradingChart({
 
   if (error) {
     return (
-      <div className="flex items-center justify-center w-full h-[250px] sm:h-[300px] md:h-[350px] bg-zinc-900 rounded-lg">
+      <div className="flex items-center justify-center w-full h-[250px] sm:h-[300px] md:h-[350px] bg-[#0a0014] rounded-lg border-2 border-[#C1FF72]/30">
         <div className="text-center px-4">
           <p className="text-red-500 mb-2 text-sm">Error loading price data</p>
-          <p className="text-xs text-zinc-400">{error.message}</p>
+          <p className="text-xs text-[#C1FF72]/60">{error.message}</p>
         </div>
       </div>
     );
@@ -402,10 +402,10 @@ export function TradingChart({
 
   if (isLoading && data.length === 0) {
     return (
-      <div className="flex items-center justify-center w-full h-[250px] sm:h-[300px] md:h-[350px] bg-zinc-900 rounded-lg">
+      <div className="flex items-center justify-center w-full h-[250px] sm:h-[300px] md:h-[350px] bg-[#0a0014] rounded-lg border-2 border-[#C1FF72]/30">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 sm:h-10 sm:w-10 border-b-2 border-pink-500 mx-auto mb-3" />
-          <p className="text-zinc-400 text-xs sm:text-sm">Loading...</p>
+          <div className="animate-spin rounded-full h-8 w-8 sm:h-10 sm:w-10 border-b-2 border-[#C1FF72] mx-auto mb-3" />
+          <p className="text-[#C1FF72]/60 text-xs sm:text-sm">Loading...</p>
         </div>
       </div>
     );
@@ -415,8 +415,8 @@ export function TradingChart({
     <div ref={containerRef} className="relative w-full">
       {/* Current Price Display - Top Left (only after hydration to avoid mismatch) */}
       {isMounted && currentPrice && (
-        <div className="absolute top-2 left-2 sm:top-3 sm:left-3 z-30 flex items-center gap-1.5 bg-black/70 backdrop-blur px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg border border-pink-500/30">
-          <span className="text-pink-400 font-bold text-sm sm:text-base">
+        <div className="absolute top-2 left-2 sm:top-3 sm:left-3 z-30 flex items-center gap-1.5 bg-[#1800AD]/90 backdrop-blur px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg border-2 border-[#C1FF72] shadow-[2px_2px_0_0_#C1FF72]">
+          <span className="text-[#C1FF72] font-bold text-sm sm:text-base">
             ${currentPrice.toFixed(4)}
           </span>
         </div>
@@ -438,22 +438,22 @@ export function TradingChart({
           onAddPoint={onAddPoint}
           onFinishDrawing={onFinishDrawing}
         />
-        
+
         {/* Rainbow trail - ends at the cat's pop-tart body like original Nyan Cat */}
         {isMounted && rainbowTrailPoints.length > 1 && nyanPosition && (
-          <RainbowPathTrail 
-            points={rainbowTrailPoints} 
-            catX={nyanPosition.x} 
-            strokeWidth={isMobile ? 10 : 14} 
+          <RainbowPathTrail
+            points={rainbowTrailPoints}
+            catX={nyanPosition.x}
+            strokeWidth={isMobile ? 10 : 14}
           />
         )}
-        
+
         {/* Nyan Cat at current price - rainbow connects to pop-tart body */}
         {isMounted && nyanPosition && (
-          <NyanCat 
-            x={nyanPosition.x} 
-            y={nyanPosition.y} 
-            size={isMobile ? 0.35 : 0.5} 
+          <NyanCat
+            x={nyanPosition.x}
+            y={nyanPosition.y - 22}
+            size={isMobile ? 0.35 : 0.35}
             isMobile={isMobile}
           />
         )}
@@ -463,21 +463,20 @@ export function TradingChart({
       {directionalScore.totalDirections > 0 && (
         <div className="absolute bottom-4 left-4 flex flex-col gap-2 z-30">
           {/* Directional Accuracy Score */}
-          <div className="bg-gradient-to-r from-green-600/90 to-emerald-600/90 backdrop-blur px-4 py-2 rounded-lg text-white shadow-lg border border-green-400/30">
-            <div className="text-xs font-medium opacity-90 uppercase tracking-wide">Directional Accuracy</div>
-            <div className="text-lg font-bold">
+          <div className="bg-[#1800AD]/90 backdrop-blur px-4 py-2 rounded-lg shadow-[3px_3px_0_0_#C1FF72] border-2 border-[#C1FF72]">
+            <div className="text-xs font-bold text-[#C1FF72]/80 uppercase tracking-wide">Directional Accuracy</div>
+            <div className="text-lg font-bold text-[#C1FF72]">
               {directionalScore.correctDirections}/{directionalScore.totalDirections}
               <span className="text-sm ml-2">({(directionalScore.accuracy * 100).toFixed(1)}%)</span>
             </div>
           </div>
 
           {/* PNL Display with color coding */}
-          <div className={`backdrop-blur px-4 py-2 rounded-lg text-white shadow-lg border ${
-            directionalScore.pnl >= 0
-              ? 'bg-gradient-to-r from-green-600/90 to-emerald-600/90 border-green-400/30'
-              : 'bg-gradient-to-r from-red-600/90 to-rose-600/90 border-red-400/30'
-          }`}>
-            <div className="text-xs opacity-90 uppercase tracking-wide">Estimated P&L</div>
+          <div className={`backdrop-blur px-4 py-2 rounded-lg shadow-[3px_3px_0_0_#0a0014] border-2 ${directionalScore.pnl >= 0
+            ? 'bg-[#C1FF72] border-[#0a0014] text-[#1800AD]'
+            : 'bg-red-500 border-[#0a0014] text-white'
+            }`}>
+            <div className="text-xs font-bold opacity-80 uppercase tracking-wide">Estimated P&L</div>
             <div className="text-lg font-bold">
               {directionalScore.pnl >= 0 ? '+' : ''}
               {directionalScore.pnl.toFixed(4)} ETH
@@ -488,9 +487,9 @@ export function TradingChart({
           </div>
 
           {/* Max Profit Info */}
-          <div className="bg-amber-600/90 backdrop-blur px-4 py-2 rounded-lg text-white text-xs shadow-lg border border-amber-400/30">
-            <div className="opacity-90">Max Profit: {directionalScore.maxProfit.toFixed(4)} ETH</div>
-            <div className="opacity-75 mt-1">
+          <div className="bg-[#0a0014]/90 backdrop-blur px-4 py-2 rounded-lg text-xs shadow-[2px_2px_0_0_#C1FF72] border-2 border-[#C1FF72]/50">
+            <div className="text-[#C1FF72]/90">Max Profit: {directionalScore.maxProfit.toFixed(4)} ETH</div>
+            <div className="text-[#C1FF72]/60 mt-1">
               {pnlConfig.amount} ETH × {pnlConfig.leverage}x leverage
             </div>
           </div>

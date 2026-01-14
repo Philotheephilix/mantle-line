@@ -1,101 +1,292 @@
 'use client';
 
 import Link from "next/link";
-import MeshGradients from "@/components/MeshGradients";
+import Image from "next/image";
+import { motion } from "framer-motion";
+import { NoiseEffect } from "@/components/ui/NoiseEffect";
+import { Header, Footer } from "@/components/layout";
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.15,
+      delayChildren: 0.2,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 30 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.6, ease: [0.4, 0, 0.2, 1] as const },
+  },
+};
 
 export default function Home() {
   return (
-    <div className="relative min-h-screen w-full overflow-hidden">
-      {/* Animated gradient background */}
-      <div className="fixed inset-0 z-0">
-        <MeshGradients />
-      </div>
+    <NoiseEffect opacity={0.5} className="min-h-screen flex flex-col">
+      <div className="relative flex flex-col min-h-screen">
+        {/* Animated background */}
+        <div className="fixed inset-0 z-0">
+          <div className="absolute inset-0 bg-gradient-to-br from-[#0a0014] via-[#1800AD] to-[#0a0014]" />
+          <motion.div
+            className="absolute inset-0 opacity-30"
+            animate={{
+              backgroundPosition: ['0% 0%', '100% 100%'],
+            }}
+            transition={{
+              duration: 20,
+              repeat: Infinity,
+              repeatType: 'reverse',
+            }}
+            style={{
+              backgroundImage: 'radial-gradient(circle at center, #C1FF72 0%, transparent 50%)',
+              backgroundSize: '100% 100%',
+            }}
+          />
+        </div>
 
-      {/* Content overlay */}
-      <div className="relative z-10 bg-black/10">
-        {/* Hero Section */}
-        <section className="flex h-[70vh] flex-col items-center justify-center px-4 py-20 text-center">
-          <div className="max-w-4xl space-y-2">
-            <h1 className="text-6xl font-bold leading-tight tracking-[0.4em] text-white drop-shadow-lg md:text-7xl lg:text-8xl">
-              RESOLV
-            </h1>
-            <p className="text-2xl font-semibold text-white/90 drop-shadow-md md:text-3xl lg:text-4xl">
-              Trade your conviction. Draw your futures.
-            </p>
-            <p className="mx-auto max-w-2xl text-lg leading-relaxed text-white/80 md:text-xl">
-              A trading game where <strong>predictions are expressed as drawings</strong>, not orders.
-              Turn your market intuition into entertainment finance.
-            </p>
-            <div className="flex flex-col items-center justify-center gap-4 pt-8 sm:flex-row">
-              <Link
-                href="/predict"
-                className="group relative overflow-hidden rounded-full bg-white px-8 py-4 text-lg font-semibold text-black transition-all duration-300 hover:scale-105 hover:shadow-2xl"
-              >
-                <span className="relative z-10">Start Drawing</span>
-                <div className="absolute inset-0 bg-gradient-to-r from-cyan-400 to-orange-400 opacity-0 transition-opacity duration-300 group-hover:opacity-20"></div>
-              </Link>
-              <Link
-                href="/open-position"
-                className="rounded-full border-2 border-white/50 bg-white/10 px-8 py-4 text-lg font-semibold text-white backdrop-blur-sm transition-all duration-300 hover:border-white hover:bg-white/20"
-              >
-                View Positions
-              </Link>
-            </div>
-          </div>
-        </section>
-
-        {/* How It Works Section */}
-        <section className="relative  backdrop-blur-3xl shadow-inner py-24 px-4">
-          <div className="mx-auto max-w-6xl flex items-center justify-between gap-16">
-            <h2 className="text-start text-4xl font-bold text-white md:text-6xl">
-              How It Works?
-            </h2>
-            <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-              <div className="rounded-2xl bg-white/10 p-8 backdrop-blur-md transition-transform duration-300 hover:scale-105">
-                <div className="mb-4 text-4xl font-bold text-zinc-400">1</div>
-                <h3 className="mb-4 text-xl font-semibold text-white">Draw Your Prediction</h3>
-                <p className="text-white/80">
-                  You&apos;re shown a live market chart. Draw a path or curve representing your expected price trajectory over a fixed future horizon.
-                </p>
-              </div>
-              <div className="rounded-2xl bg-white/10 p-8 backdrop-blur-md transition-transform duration-300 hover:scale-105">
-                <div className="mb-4 text-4xl font-bold text-zinc-400">2</div>
-                <h3 className="mb-4 text-xl font-semibold text-white">Continuous Futures Position</h3>
-                <p className="text-white/80">
-                  Your gesture is captured as a continuous curve, normalized to the chart&apos;s time and price scale, and interpolated using piecewise linear interpolation or cubic splines.
-                </p>
-              </div>
-              <div className="rounded-2xl bg-white/10 p-8 backdrop-blur-md transition-transform duration-300 hover:scale-105">
-                <div className="mb-4 text-4xl font-bold text-zinc-400">3</div>
-                <h3 className="mb-4 text-xl font-semibold text-white">Calculate PnL</h3>
-                <p className="text-white/80">
-                  The curve is interpreted as a continuous futures position where slope and deviation from the start price determine exposure, and PnL is computed via a discrete continuous-time PnL model.
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
+        {/* Header */}
+        <div className="relative z-20">
+          <Header />
+        </div>
 
 
 
-        {/* CTA Section */}
-        <section className="relative bg-black/60 backdrop-blur-3xl shadow-inner py-24 px-4">
-          <div className="mx-auto max-w-3xl text-center">
-            <h2 className="mb-8 text-4xl font-bold text-white md:text-5xl">
-              Ready to Trade Your Conviction?
-            </h2>
-            <p className="mb-12 text-xl text-white/80">
-              Draw your prediction curve and turn your market intuition into trading decisions.
-            </p>
-            <Link
-              href="/predict"
-              className="inline-block rounded-full bg-white px-12 py-5 text-xl font-semibold text-black transition-all duration-300 hover:scale-105 hover:shadow-2xl"
+        {/* Content overlay */}
+        <div className="relative z-10 flex-1">
+          {/* Hero Section */}
+          <section className="flex min-h-[70vh] flex-row items-center justify-center px-14 py-12 text-start">
+
+            <motion.div
+              className=""
+              animate={{
+                y: [-10, 10, -10],
+              }}
+              transition={{
+                duration: 3,
+                repeat: Infinity,
+                ease: [0.4, 0, 0.6, 1],
+              }}
             >
-              Start Drawing Now
-            </Link>
-          </div>
-        </section>
+              <Image
+                src="https://i.giphy.com/aTjXudsKhB35df6RFf.webp"
+                alt="Hero Image"
+                width={256}
+                height={161}
+                className="w-[620px]  h-[202px] object-contain filter hue-rotate-40 brightness-150 contrast-120"
+              />
+            </motion.div>
+
+
+            <motion.div
+              className="max-w-3xl space-y-6"
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+            >
+
+
+
+              {/* Floating Logo */}
+              <motion.div
+                className="flex gap-10 mb-8"
+              // animate={{
+              //   y: [-10, 10, -10],
+              // }}
+              // transition={{
+              //   duration: 3,
+              //   repeat: Infinity,
+              //   ease: [0.4, 0, 0.6, 1],
+              // }}
+              >
+                <Image
+                  src="/logo.png"
+                  alt="Resolv Logo"
+                  width={80}
+                  height={80}
+                  className="rounded-xl drop-shadow-[0_0_30px_#C1FF72]"
+                />
+                <motion.h1
+                  className="text-6xl font-bold font-venite leading-tight tracking-[0.3em] text-[#C1FF72] drop-shadow-lg md:text-6xl"
+                  variants={itemVariants}
+                  style={{ textShadow: '4px 4px 0 #1800AD, -2px -2px 0 #0a0014' }}
+                >
+                  RESOLV
+                </motion.h1>
+              </motion.div>
+              <motion.p
+                className="mt-10 text-2xl font-bold text-white drop-shadow-md md:text-2xl"
+                variants={itemVariants}
+              >
+                We&apos;ve invented a new way to trade futures. <br /> <span className="text-[#C1FF72]">Draw your futures.</span>
+              </motion.p>
+
+              <motion.p
+                className="ttext-md leading-relaxed text-white/80"
+                variants={itemVariants}
+              >
+                A trading game where <strong className="text-[#C1FF72]">futures trades are expressed as drawings</strong>, not orders.
+                Turn your market intuition into entertainment finance.
+              </motion.p>
+
+              <motion.div
+                className="flex flex-col items-center justify-start gap-4 pt-2 sm:flex-row"
+                variants={itemVariants}
+              >
+
+                <motion.div
+                  whileHover={{ scale: 1.05, x: -2, y: -2 }}
+                  whileTap={{ scale: 0.95, x: 2, y: 2 }}
+                >
+                  <Link
+                    href="/predict"
+                    className="inline-block px-8 py-4 text-lg font-bold text-[#C1FF72] bg-[#1800AD] border-4 border-[#C1FF72] rounded-xl shadow-[6px_6px_0_0_#000000] transition-all hover:shadow-[8px_8px_0_0_#000000]"
+                  >
+                    Play Now
+                  </Link>
+                </motion.div>
+
+
+                <motion.div
+                  whileHover={{ scale: 1.05, x: -2, y: -2 }}
+                  whileTap={{ scale: 0.95, x: 2, y: 2 }}
+                >
+                  <Link
+                    href="/open-position"
+                    className="inline-block px-8 py-4 text-lg font-bold text-[#1800AD] bg-[#C1FF72]/80 border-4 border-[#1800AD] rounded-xl shadow-[6px_6px_0_0_#000000] transition-all hover:shadow-[8px_8px_0_0_#000000]"
+                  >
+                    View Positions
+                  </Link>
+                </motion.div>
+
+
+
+
+
+                <motion.div
+                  whileHover={{ scale: 1.05, x: -2, y: -2 }}
+                  whileTap={{ scale: 0.95, x: 2, y: 2 }}
+                >
+                  <Link
+                    href="/leaderboard"
+                    className="inline-block px-8 py-4 text-lg font-bold text-[#1800AD] bg-[#C1FF72]/80 border-4 border-[#1800AD] rounded-xl shadow-[6px_6px_0_0_#000000] transition-all hover:shadow-[8px_8px_0_0_#000000]"
+                  >
+                    🏆 Leaderboard
+                  </Link>
+                </motion.div>
+              </motion.div>
+            </motion.div>
+          </section>
+
+          {/* How It Works Section */}
+          <section className="relative bg-[#0a0014]/80 backdrop-blur-xl py-24 px-4 border-y-4 border-[#C1FF72]">
+            <motion.div
+              className="mx-auto max-w-6xl"
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+            >
+              <motion.h2
+                className="text-center font-venite text-4xl font-bold text-[#C1FF72] md:text-6xl mb-12"
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                style={{ textShadow: '3px 3px 0 #1800AD' }}
+              >
+                How It Works?
+              </motion.h2>
+
+              <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+                {[
+                  {
+                    num: "1",
+                    title: "Draw Your Prediction",
+                    desc: "You're shown a live market chart. Draw a path or curve representing your expected price trajectory over a fixed future horizon.",
+                    emoji: "✏️"
+                  },
+                  {
+                    num: "2",
+                    title: "Continuous Futures Position",
+                    desc: "Your gesture is captured as a continuous curve, normalized to the chart's time and price scale, and interpolated using piecewise linear interpolation or cubic splines.",
+                    emoji: "📈"
+                  },
+                  {
+                    num: "3",
+                    title: "Calculate PnL",
+                    desc: "The curve is interpreted as a continuous futures position where slope and deviation from the start price determine exposure, and PnL is computed via a discrete continuous-time PnL model.",
+                    emoji: "💰"
+                  }
+                ].map((item, i) => (
+                  <motion.div
+                    key={item.num}
+                    className="relative p-8 bg-[#1800AD]/60 border-4 border-[#C1FF72] rounded-2xl shadow-[6px_6px_0_0_#C1FF72]"
+                    initial={{ opacity: 0, y: 30 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: i * 0.15 }}
+                    whileHover={{
+                      scale: 1.02,
+                      x: -4,
+                      y: -4,
+                      boxShadow: '10px 10px 0 0 #C1FF72'
+                    }}
+                  >
+                    <div className="flex items-center gap-3 mb-4">
+                      <span className="text-7xl">{item.emoji}</span>
+                    </div>
+                    <h3 className="mb-4 text-xl font-bold text-[#C1FF72]">{item.title}</h3>
+                    <p className="text-white/80">
+                      {item.desc}
+                    </p>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          </section>
+
+          {/* CTA Section */}
+          <section className="relative bg-[#1800AD]/60 backdrop-blur-xl py-24 px-4">
+            <motion.div
+              className="mx-auto max-w-3xl text-center"
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+            >
+              <motion.h2
+                className="mb-8 text-4xl font-venite font-bold text-[#C1FF72] md:text-5xl"
+                style={{ textShadow: '3px 3px 0 #0a0014' }}
+              >
+                Ready to trade convictions?
+              </motion.h2>
+              <p className="mb-12 text-xl text-white/80">
+                Draw your prediction curve and turn your market intuition into trading decisions.
+              </p>
+              <motion.div
+                whileHover={{ scale: 1.05, x: -3, y: -3 }}
+                whileTap={{ scale: 0.95, x: 3, y: 3 }}
+              >
+                <Link
+                  href="/predict"
+                  className="inline-block px-12 py-5 text-xl font-bold text-[#1800AD] bg-[#C1FF72] border-4 border-[#0a0014] rounded-xl shadow-[8px_8px_0_0_#0a0014] transition-all hover:shadow-[10px_10px_0_0_#0a0014]"
+                >
+                  Play Now 🚀
+                </Link>
+              </motion.div>
+            </motion.div>
+          </section>
+        </div>
+
+        {/* Footer */}
+        <div className="relative z-10">
+          <Footer />
+        </div>
       </div>
-    </div>
+    </NoiseEffect >
   );
 }

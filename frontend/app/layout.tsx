@@ -5,6 +5,11 @@ import { ProvidersWrapper } from "@/components/providers-wrapper";
 export const metadata: Metadata = {
   title: "Resolv — Draw your futures",
   description: "A trading game where predictions are expressed as drawings, not orders. Draw your price prediction and trade your market intuition.",
+  icons: {
+    icon: '/favicon.ico',
+    shortcut: '/favicon-16x16.png',
+    apple: '/apple-touch-icon.png',
+  },
 };
 
 export const dynamic = 'force-dynamic';
@@ -16,7 +21,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="antialiased">
+      <head>
+        <link rel="manifest" href="/site.webmanifest" />
+      </head>
+      <body className="antialiased bg-[#0a0014] font-sans">
         <ProvidersWrapper>
           {children}
         </ProvidersWrapper>

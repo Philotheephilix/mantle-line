@@ -1,4 +1,4 @@
-/* Slot Machine - 3D Spinning Reels like Vue-SlotMachine */
+/* Slot Machine - 3D Spinning Reels - Nyan Theme */
 
 .slot-machine-text {
   position: relative;
@@ -7,10 +7,10 @@
   justify-content: center;
   width: 100%;
   height: 100%;
-  background: #0f0c14;
+  background: #0a0014;
   border-radius: 8px;
   overflow: hidden;
-  border: 2px solid #5c4a2c;
+  border: 2px solid #C1FF72;
   box-shadow:
     inset 0 2px 0 rgba(0,0,0,0.35);
 }
@@ -53,21 +53,22 @@
   font-family: var(--font-geist-mono), 'Courier New', monospace;
   font-size: 22px;
   font-weight: 700;
-  color: #f8e9b0;
-  background: #131017;
+  color: #C1FF72;
+  background: #1800AD;
   border-top: 1px solid rgba(0,0,0,0.25);
   border-bottom: 1px solid rgba(0,0,0,0.25);
   backface-visibility: hidden;
   image-rendering: pixelated;
+  text-shadow: 0 0 10px rgba(193, 255, 114, 0.5);
 }
 
 /* Fence divider */
 .slot-fence {
   width: 4px;
   height: 100%;
-  background: #5c4a2c;
-  border-left: 1px solid #2f2415;
-  border-right: 1px solid #2f2415;
+  background: #C1FF72;
+  border-left: 1px solid #0a0014;
+  border-right: 1px solid #0a0014;
   flex-shrink: 0;
 }
 
