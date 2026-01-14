@@ -96,7 +96,6 @@ export function TradingChart({
         const timeScale = chart.timeScale();
 
         // Get the chart container's position relative to its parent
-        // The parent is the div with position: relative that contains ChartCanvas and overlays
         const chartRect = chartContainer.getBoundingClientRect();
         const parentElement = chartContainer.parentElement;
         if (!parentElement) return;
@@ -107,33 +106,19 @@ export function TradingChart({
 
         // Convert ALL price points to pixel coordinates for the rainbow trail
         const trailPoints: Array<{ x: number; y: number }> = [];
-
-        // Use ALL data points for the full rainbow trail
         for (const point of data) {
           const x = timeScale.timeToCoordinate(point.time as Time);
           const y = series.priceToCoordinate(point.value);
-
-          // Adjust coordinates to be relative to the parent container (where NyanCat is positioned)
           if (x !== null && y !== null) {
-            trailPoints.push({
-              x: x + offsetX,
-              y: y + offsetY
-            });
+            trailPoints.push({ x: x + offsetX, y: y + offsetY });
           }
         }
-
         setRainbowTrailPoints(trailPoints);
 
-        // Position cat at the end of the rainbow trail (current price point)
-        // Cat's tail should connect seamlessly to the rainbow
+        // Position cat at the latest price point
         if (trailPoints.length > 0) {
           const lastPoint = trailPoints[trailPoints.length - 1];
-
-          // Position cat at the last price point - tail connects to rainbow
-          setNyanPosition({
-            x: lastPoint.x,
-            y: lastPoint.y
-          });
+          setNyanPosition({ x: lastPoint.x, y: lastPoint.y });
         }
       } catch (e) {
         // Chart not ready yet
@@ -429,6 +414,7 @@ export function TradingChart({
         <ChartCanvas ref={chartRef} data={data} isDark={isDark} barSpacing={barSpacing} />
         <PredictionOverlay
           chartRef={chartRef as React.RefObject<{ chart: any; series: any }>}
+          catPosition={nyanPosition}
           isDrawing={isDrawing}
           isConfirmed={isConfirmed}
           points={currentPoints}
@@ -441,8 +427,7 @@ export function TradingChart({
           onAddPoint={onAddPoint}
           onFinishDrawing={onFinishDrawing}
         />
-
-        {/* Rainbow trail - ends at the cat's pop-tart body like original Nyan Cat */}
+        {/* Rainbow trail on price line behind the cat */}
         {isMounted && rainbowTrailPoints.length > 1 && nyanPosition && (
           <RainbowPathTrail
             points={rainbowTrailPoints}
@@ -451,7 +436,7 @@ export function TradingChart({
           />
         )}
 
-        {/* Nyan Cat at current price - rainbow connects to pop-tart body */}
+        {/* Nyan Cat at current price */}
         {isMounted && nyanPosition && (
           <NyanCat
             x={nyanPosition.x}
