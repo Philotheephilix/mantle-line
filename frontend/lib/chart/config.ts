@@ -13,7 +13,10 @@ export function getChartConfig(isDark: boolean = true, barSpacing: number = 0.5)
     localization: {
       timeFormatter: (time: number) => {
         const date = new Date(time * 1000);
-        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        // Explicitly format as local time using getHours/getMinutes
+        const hours = date.getHours().toString().padStart(2, '0');
+        const minutes = date.getMinutes().toString().padStart(2, '0');
+        return `${hours}:${minutes}`;
       },
     },
     timeScale: {
@@ -30,7 +33,9 @@ export function getChartConfig(isDark: boolean = true, barSpacing: number = 0.5)
       tickMarkFormatter: (time: Time) => {
         const timestamp = typeof time === 'number' ? time : 0;
         const date = new Date(timestamp * 1000);
-        return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        const hours = date.getHours().toString().padStart(2, '0');
+        const minutes = date.getMinutes().toString().padStart(2, '0');
+        return `${hours}:${minutes}`;
       },
     },
     rightPriceScale: {

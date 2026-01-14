@@ -62,7 +62,6 @@ export function usePriceData() {
   const [state, dispatch] = useReducer(priceDataReducer, initialState);
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const lastTimestampRef = useRef<number>(0);
   const isMountedRef = useRef<boolean>(true);
 
   useEffect(() => {
@@ -100,13 +99,7 @@ export function usePriceData() {
         const t = msg.data;
 
         if (t.lastPrice) {
-          // Ensure unique timestamps by incrementing if same as last
-          let timestamp = Math.floor(Date.now() / 1000);
-          if (timestamp <= lastTimestampRef.current) {
-            timestamp = lastTimestampRef.current + 1;
-          }
-          lastTimestampRef.current = timestamp;
-
+          const timestamp = Math.floor(Date.now() / 1000);
           const pricePoint: PricePoint = {
             time: timestamp,
             value: Number(t.lastPrice),
