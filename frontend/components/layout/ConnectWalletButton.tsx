@@ -40,13 +40,13 @@ export function ConnectWalletButton() {
                     onClick={openConnectModal}
                     type="button"
                     className="relative group px-4 py-2.5 bg-[#C1FF72] border-3 border-[#0a0014] rounded-lg font-bold text-[#1800AD] uppercase tracking-wider text-sm shadow-[4px_4px_0_0_#0a0014] transition-all"
-                    whileHover={{ 
-                      x: -2, 
+                    whileHover={{
+                      x: -2,
                       y: -2,
                       boxShadow: '6px 6px 0 0 #0a0014'
                     }}
-                    whileTap={{ 
-                      x: 2, 
+                    whileTap={{
+                      x: 2,
                       y: 2,
                       boxShadow: '2px 2px 0 0 #0a0014'
                     }}
@@ -81,13 +81,13 @@ export function ConnectWalletButton() {
                   onClick={openAccountModal}
                   type="button"
                   className="relative group px-4 py-2.5 bg-[#1800AD] border-3 border-[#C1FF72] rounded-lg font-bold text-[#C1FF72] uppercase tracking-wider text-sm shadow-[4px_4px_0_0_#C1FF72]"
-                  whileHover={{ 
-                    x: -2, 
+                  whileHover={{
+                    x: -2,
                     y: -2,
                     boxShadow: '6px 6px 0 0 #C1FF72'
                   }}
-                  whileTap={{ 
-                    x: 2, 
+                  whileTap={{
+                    x: 2,
                     y: 2,
                     boxShadow: '2px 2px 0 0 #C1FF72'
                   }}

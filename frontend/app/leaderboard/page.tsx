@@ -137,7 +137,6 @@ const itemVariants = {
   visible: {
     opacity: 1,
     x: 0,
-    transition: { duration: 0.4, ease: [0.4, 0, 0.2, 1] },
   },
 };
 
@@ -184,10 +183,10 @@ export default function LeaderboardPage() {
   };
 
   return (
-    <NoiseEffect opacity={0.12} className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col">
       <Header />
 
-      <div className="flex-1 px-4 py-10">
+      <NoiseEffect opacity={0.6} className="flex-1 px-4 py-10">
         <div className="max-w-6xl mx-auto">
           {/* Page Header */}
           <motion.div
@@ -248,11 +247,10 @@ export default function LeaderboardPage() {
               <motion.button
                 key={filter}
                 onClick={() => setTimeFilter(filter)}
-                className={`px-4 py-2 rounded-lg font-bold text-sm border-3 transition-all ${
-                  timeFilter === filter
-                    ? 'bg-[#C1FF72] text-[#1800AD] border-[#0a0014] shadow-[3px_3px_0_0_#0a0014]'
-                    : 'bg-[#1800AD]/60 text-[#C1FF72] border-[#C1FF72]/50 hover:border-[#C1FF72]'
-                }`}
+                className={`px-4 py-2 rounded-lg font-bold text-sm border-3 transition-all ${timeFilter === filter
+                  ? 'bg-[#C1FF72] text-[#1800AD] border-[#0a0014] shadow-[3px_3px_0_0_#0a0014]'
+                  : 'bg-[#1800AD]/60 text-[#C1FF72] border-[#C1FF72]/50 hover:border-[#C1FF72]'
+                  }`}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
@@ -290,9 +288,9 @@ export default function LeaderboardPage() {
                   <motion.div
                     key={trader.rank}
                     variants={itemVariants}
-                    className={`grid grid-cols-1 md:grid-cols-12 gap-4 px-6 py-5 border-b border-[#C1FF72]/20 transition-all cursor-pointer ${
-                      hoveredRank === trader.rank ? 'bg-[#1800AD]/40' : ''
-                    } ${trader.rank <= 3 ? 'bg-gradient-to-r from-[#1800AD]/20 to-transparent' : ''}`}
+                    transition={{ duration: 0.4, ease: "easeInOut" }}
+                    className={`grid grid-cols-1 md:grid-cols-12 gap-4 px-6 py-5 border-b border-[#C1FF72]/20 transition-all cursor-pointer ${hoveredRank === trader.rank ? 'bg-[#1800AD]/40' : ''
+                      } ${trader.rank <= 3 ? 'bg-gradient-to-r from-[#1800AD]/20 to-transparent' : ''}`}
                     onMouseEnter={() => setHoveredRank(trader.rank)}
                     onMouseLeave={() => setHoveredRank(null)}
                     whileHover={{ x: 4 }}
@@ -427,9 +425,9 @@ export default function LeaderboardPage() {
             ))}
           </motion.div>
         </div>
-      </div>
+      </NoiseEffect>
 
       <Footer />
-    </NoiseEffect>
+    </div>
   );
 }
