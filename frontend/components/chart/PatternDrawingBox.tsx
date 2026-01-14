@@ -266,7 +266,7 @@ export function PatternDrawingBox({
   }, []);
 
   return (
-    <motion.div 
+    <motion.div
       className="relative group"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
@@ -278,23 +278,15 @@ export function PatternDrawingBox({
       <div className="relative bg-[#0a0014] rounded-2xl border-4 border-[#C1FF72] p-3 sm:p-4 shadow-[6px_6px_0_0_#1800AD]">
         {/* Header */}
         <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <motion.div 
-              className="w-8 h-8 flex items-center justify-center bg-[#C1FF72] rounded-lg shadow-[2px_2px_0_0_#1800AD]"
-              whileHover={{ scale: 1.1, rotate: 5 }}
-            >
-              <span className="text-sm">✏️</span>
-            </motion.div>
-          </div>
-          <h3 
-            className="text-xl font-bold text-[#C1FF72]"
+          <h3
+            className="text-xl font-venite text-[#C1FF72]"
             style={{ textShadow: '2px 2px 0 #1800AD' }}
           >
             Draw your futures
           </h3>
           <AnimatePresence>
             {points.length > 0 && (
-              <motion.span 
+              <motion.span
                 className="text-[10px] font-bold text-[#1800AD] bg-[#C1FF72] px-2.5 py-1 rounded-full border-2 border-[#1800AD]"
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
@@ -307,13 +299,13 @@ export function PatternDrawingBox({
         </div>
 
         {/* Drawing Canvas - Nyan style */}
-        <div className="relative mb-4">
+        <div className="relative mb-2">
           <div className="absolute -inset-0.5 bg-gradient-to-r from-[#C1FF72]/50 to-[#1800AD]/50 rounded-xl blur-sm opacity-50" />
           <canvas
             ref={canvasRef}
-            width={600}
-            height={300}
-            className="relative w-full h-[150px] sm:h-[200px] bg-[#1800AD]/30 rounded-xl border-3 border-[#C1FF72]/50 cursor-crosshair touch-none shadow-[inset_0_2px_0_0_rgba(0,0,0,0.6)]"
+            // width={600}
+            // height={300}
+            className="relative w-full h-[150px] h-[170px] bg-[#1800AD]/30 rounded-xl border-3 border-[#C1FF72]/50 cursor-crosshair touch-none shadow-[inset_0_2px_0_0_rgba(0,0,0,0.6)]"
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={finishDrawing}
@@ -330,7 +322,7 @@ export function PatternDrawingBox({
           </div>
           <AnimatePresence>
             {points.length === 0 && (
-              <motion.div 
+              <motion.div
                 className="absolute inset-0 flex items-center justify-center pointer-events-none"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -338,7 +330,7 @@ export function PatternDrawingBox({
               >
                 <div className="flex items-center gap-2 text-[#C1FF72]/60">
                   <span className="text-xs font-bold">Draw your prediction</span>
-                  <motion.span 
+                  <motion.span
                     animate={{ x: [0, 10, 0] }}
                     transition={{ repeat: Infinity, duration: 1 }}
                   >
@@ -351,9 +343,9 @@ export function PatternDrawingBox({
         </div>
 
         {/* Time Selector - Pixel Art Casino Chips */}
-        <div className="mb-3">
-          <p className="text-[13px] text-[#C1FF72]/70 font-bold mb-2 uppercase tracking-wider">
-            Choose time horizon and resolve your drawing
+        <div className="mb-8">
+          <p className="text-[13px] text-[#C1FF72]/70 mb-2 font-light">
+            Choose time horizon & resolve
           </p>
           <div className="flex gap-0.5 sm:gap-2 md:gap-3 justify-between">
             {[1, 2, 3, 4, 5].map((min) => (
@@ -396,26 +388,20 @@ export function PatternDrawingBox({
 
         {/* Action Buttons - Nyan style */}
         <div className="flex items-center gap-3">
-          <SlotMachineLeverButton
-            text="RESOLV"
-            onClick={handleApply}
-            disabled={points.length < 2}
-            className="flex-1"
-          />
           <div className="flex items-center gap-2">
             <motion.input
               type="number"
               min={0}
               value={amount}
               onChange={(e) => onAmountChange(Number(e.target.value) || 0)}
-              className="w-20 px-3 py-2 bg-[#1800AD] hover:bg-[#1800AD]/80 border-3 border-[#C1FF72] rounded-xl text-[#C1FF72] text-sm font-bold shadow-[3px_3px_0_0_#C1FF72] focus:outline-none focus:bg-[#1800AD]/90"
+              className="w-15 px-3 py-2 bg-[#1800AD] hover:bg-[#1800AD]/80 border-3 border-[#C1FF72] rounded-xl text-[#C1FF72] text-xs font-bold shadow-[3px_3px_0_0_#C1FF72] focus:outline-none focus:bg-[#1800AD]/90"
               whileHover={{ x: -2, y: -2, boxShadow: '5px 5px 0 0 #C1FF72' }}
               whileFocus={{ x: -2, y: -2, boxShadow: '5px 5px 0 0 #C1FF72' }}
             />
             <motion.select
               value={leverage}
               onChange={(e) => onLeverageChange(Number(e.target.value))}
-              className="px-3 py-2 bg-[#1800AD] hover:bg-[#1800AD]/80 border-3 border-[#C1FF72] rounded-xl text-[#C1FF72] text-sm font-bold shadow-[3px_3px_0_0_#C1FF72] focus:outline-none focus:bg-[#1800AD]/90 [&>option]:bg-[#1800AD] [&>option]:text-[#C1FF72]"
+              className="px-2 py-2 bg-[#1800AD] hover:bg-[#1800AD]/80 border-3 border-[#C1FF72] rounded-xl text-[#C1FF72] text-xs font-bold shadow-[3px_3px_0_0_#C1FF72] focus:outline-none focus:bg-[#1800AD]/90 [&>option]:bg-[#1800AD] [&>option]:text-[#C1FF72]"
               whileHover={{ x: -2, y: -2, boxShadow: '5px 5px 0 0 #C1FF72' }}
               whileFocus={{ x: -2, y: -2, boxShadow: '5px 5px 0 0 #C1FF72' }}
             >
@@ -426,10 +412,17 @@ export function PatternDrawingBox({
               ))}
             </motion.select>
           </div>
+          <SlotMachineLeverButton
+            text="RESOLV"
+            onClick={handleApply}
+            disabled={points.length < 2}
+            className="flex-1"
+          />
+
           <motion.button
             onClick={handleClear}
             disabled={points.length === 0}
-            className="px-4 py-3 bg-[#1800AD] hover:bg-[#1800AD]/80 border-3 border-[#C1FF72] rounded-xl text-[#C1FF72] text-sm font-bold shadow-[3px_3px_0_0_#C1FF72] disabled:opacity-30 disabled:cursor-not-allowed"
+            className="px-2 py-2 bg-[#1800AD] hover:bg-[#1800AD]/80 border-3 border-[#C1FF72] rounded-xl text-[#C1FF72] text-xs font-bold shadow-[3px_3px_0_0_#C1FF72] disabled:opacity-30 disabled:cursor-not-allowed"
             whileHover={{ x: -2, y: -2, boxShadow: '5px 5px 0 0 #C1FF72' }}
             whileTap={{ x: 2, y: 2, boxShadow: '1px 1px 0 0 #C1FF72' }}
           >

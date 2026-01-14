@@ -4,6 +4,10 @@ import { BybitTickerData, PriceEntry } from '../types/index.js';
 import logger from '../utils/logger.js';
 import config from '../config/config.js';
 
+
+const ticker = "tickers.MNTUSDT";
+// Available tickers: Check on ByBit API
+
 export class PriceIngester extends EventEmitter {
   private ws: WebSocket | null = null;
   private reconnectAttempts = 0;
@@ -34,7 +38,7 @@ export class PriceIngester extends EventEmitter {
   public stop(): void {
     logger.info('Stopping price ingester');
     this.shouldReconnect = false;
-    
+
     if (this.heartbeatInterval) {
       clearInterval(this.heartbeatInterval);
       this.heartbeatInterval = null;
@@ -136,10 +140,10 @@ export class PriceIngester extends EventEmitter {
 
     const subscribeMessage = {
       op: 'subscribe',
-      args: ['tickers.ETHUSDT']
+      args: [ticker]
     };
 
-    logger.info('Subscribing to tickers.ETHUSDT');
+    logger.info(`Subscribing to ${ticker}`);
     this.ws.send(JSON.stringify(subscribeMessage));
   }
 
@@ -149,17 +153,17 @@ export class PriceIngester extends EventEmitter {
   private handleMessage(data: WebSocket.Data): void {
     try {
       const message = JSON.parse(data.toString());
-      
+
       // Log all messages for debugging
-      logger.debug('WebSocket message received', { 
-        op: message.op, 
+      logger.debug('WebSocket message received', {
+        op: message.op,
         topic: message.topic,
-        type: message.type 
+        type: message.type
       });
-      
+
       // Handle subscription confirmation
       if (message.op === 'subscribe' && message.success) {
-        logger.info('Successfully subscribed to tickers.ETHUSDT');
+        logger.info(`Successfully subscribed to ${ticker}`);
         return;
       }
 
@@ -173,7 +177,7 @@ export class PriceIngester extends EventEmitter {
       }
 
       // Handle ticker data
-      if (message.topic === 'tickers.ETHUSDT' && message.data) {
+      if (message.topic === ticker && message.data) {
         this.lastMessageTime = Date.now();
         this.processPriceUpdate(message as BybitTickerData);
       } else if (message.topic && message.topic.startsWith('tickers')) {

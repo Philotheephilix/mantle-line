@@ -415,8 +415,11 @@ export function TradingChart({
     <div ref={containerRef} className="relative w-full">
       {/* Current Price Display - Top Left (only after hydration to avoid mismatch) */}
       {isMounted && currentPrice && (
-        <div className="absolute top-2 left-2 sm:top-3 sm:left-3 z-30 flex items-center gap-1.5 bg-[#1800AD]/90 backdrop-blur px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg border-2 border-[#C1FF72] shadow-[2px_2px_0_0_#C1FF72]">
-          <span className="text-[#C1FF72] font-bold text-sm sm:text-base">
+        <div className="absolute top-2 left-2 z-30 flex items-center gap-1.5 bg-black backdrop-blur px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg border-2 border-[#C1FF72] shadow-[2px_2px_0_0_#C1FF72]">
+          <span className="text-xs">
+            MNT/USDT
+          </span>
+          <span className="text-[#C1FF72] font-venite font-bold text-sm sm:text-base">
             ${currentPrice.toFixed(4)}
           </span>
         </div>

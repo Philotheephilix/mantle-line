@@ -54,15 +54,12 @@ export function Header({ showStatus, statusText }: HeaderProps) {
           </Link>
 
           {/* Navigation */}
-          <nav className="hidden sm:flex items-center gap-4">
-            <Link href="/predict" className="text-sm font-bold text-white/80 hover:text-[#C1FF72] transition-colors">
+          <nav className="hidden sm:flex items-center md:gap-10 gap-4 uppercase italic font-venite">
+            <Link href="/predict" className="border-b-2 border-[#C1FF72] text-sm font-bold text-white/80 hover:text-[#C1FF72] transition-colors">
               Play
             </Link>
-            <Link href="/leaderboard" className="text-sm font-bold text-white/80 hover:text-[#C1FF72] transition-colors">
+            <Link href="/leaderboard" className="border-b-2 border-[#C1FF72] text-sm font-bold text-white/80 hover:text-[#C1FF72] transition-colors">
               Leaderboard
-            </Link>
-            <Link href="/open-position" className="text-sm font-bold text-white/80 hover:text-[#C1FF72] transition-colors">
-              Positions
             </Link>
           </nav>
 

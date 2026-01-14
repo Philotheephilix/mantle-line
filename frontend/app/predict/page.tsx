@@ -5,7 +5,6 @@ import { BrowserProvider, Contract, parseEther, formatEther } from 'ethers';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useAccount, useBalance } from 'wagmi';
 import { mantleSepoliaChain } from '@/lib/blockchain/wagmi';
-import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TradingChart } from '@/components/chart/TradingChart';
 import { PatternDrawingBox } from '@/components/chart/PatternDrawingBox';
@@ -285,8 +284,7 @@ export default function PredictPage(_props: { params?: unknown; searchParams?: u
           } catch (gasErr) {
             console.error('Gas estimation failed:', gasErr);
             throw new Error(
-              `Gas estimation failed: ${
-                gasErr instanceof Error ? gasErr.message : String(gasErr)
+              `Gas estimation failed: ${gasErr instanceof Error ? gasErr.message : String(gasErr)
               }`,
             );
           }
@@ -355,8 +353,7 @@ export default function PredictPage(_props: { params?: unknown; searchParams?: u
           } catch (gasErr) {
             console.error('Gas estimation failed (batch):', gasErr);
             throw new Error(
-              `Gas estimation failed (batch): ${
-                gasErr instanceof Error ? gasErr.message : String(gasErr)
+              `Gas estimation failed (batch): ${gasErr instanceof Error ? gasErr.message : String(gasErr)
               }`,
             );
           }
@@ -456,7 +453,7 @@ export default function PredictPage(_props: { params?: unknown; searchParams?: u
       />
 
       <motion.div
-        className="relative z-10 px-3 py-4 sm:px-4 sm:py-6 max-w-6xl mx-auto space-y-4"
+        className="relative z-10 px-3 py-4 sm:px-4 sm:py-6 max-w-6xl mx-auto space-y-2"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
@@ -521,78 +518,10 @@ export default function PredictPage(_props: { params?: unknown; searchParams?: u
           >
             <PatternDrawingBox onPatternComplete={handlePatternComplete} amount={amount} leverage={leverage} onAmountChange={function (amount: number): void {
               setAmount(amount);
-            } } onLeverageChange={(leverage) => setLeverage(leverage)} />
+            }} onLeverageChange={(leverage) => setLeverage(leverage)} />
           </motion.div>
         </NoiseEffect>
 
-
-
-
-        {/* Wallet Balance & Profit - pixel art style */}
-        <motion.div
-          className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-        >
-          <span className="text-sm sm:text-base text-[#C1FF72] font-bold whitespace-nowrap">My Balance:</span>
-
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 flex-1">
-            {/* Wallet pill - pixel look */}
-            <motion.div
-              className="flex-1 max-w-sm"
-              whileHover={{ scale: 1.02 }}
-            >
-              <div className="flex items-center gap-2 px-3 py-2 rounded-lg border-3 border-[#C1FF72] bg-[#1800AD]/50 shadow-[3px_3px_0_0_#C1FF72]">
-                <Image
-                  src="/wallet.png"
-                  alt="Wallet"
-                  width={40}
-                  height={40}
-                  className="w-9 h-9 sm:w-10 sm:h-10"
-                  style={{ imageRendering: 'pixelated' }}
-                />
-                <span className="font-mono text-sm sm:text-base text-gray-200 tracking-tight">
-                  {isConnected
-                    ? isBalanceLoading
-                      ? 'Loading...'
-                      : `${Number(mntBalance?.formatted ?? 0).toFixed(3)} ${mntBalance?.symbol ?? 'MNT'}`
-                    : '0.000 MNT'}
-                </span>
-              </div>
-            </motion.div>
-
-            {/* Profit pill - pixel look */}
-            <motion.div
-              className="flex-1 max-w-sm"
-              whileHover={{ scale: 1.02 }}
-            >
-              <div className="flex items-center gap-2 px-3 py-2 rounded-lg border-3 border-[#C1FF72] bg-[#1800AD]/50 shadow-[3px_3px_0_0_#C1FF72]">
-                <Image
-                  src="/coin stack.png"
-                  alt="Profit"
-                  width={40}
-                  height={40}
-                  className="w-9 h-9 sm:w-10 sm:h-10"
-                  style={{ imageRendering: 'pixelated' }}
-                />
-                <span
-                  className={`font-mono text-sm sm:text-base tracking-tight ${
-                    batchPnL !== null
-                      ? batchPnL >= 0
-                        ? 'text-emerald-300'
-                        : 'text-red-300'
-                      : 'text-[#C1FF72]'
-                  }`}
-                >
-                  {batchPnL !== null
-                    ? `${batchPnL >= 0 ? '+' : ''}${batchPnL.toFixed(4)}`
-                    : '+0.00'}
-                </span>
-              </div>
-            </motion.div>
-          </div>
-        </motion.div>
 
         {/* Status Info */}
         <AnimatePresence>
@@ -632,9 +561,8 @@ export default function PredictPage(_props: { params?: unknown; searchParams?: u
 
                   {positionStatus === 'closed' && batchPnL !== null && (
                     <span
-                      className={`text-sm font-bold ${
-                        batchPnL >= 0 ? 'text-emerald-300' : 'text-red-300'
-                      }`}
+                      className={`text-sm font-bold ${batchPnL >= 0 ? 'text-emerald-300' : 'text-red-300'
+                        }`}
                     >
                       PnL:{' '}
                       {batchPnL >= 0 ? '+' : ''}
@@ -655,6 +583,10 @@ export default function PredictPage(_props: { params?: unknown; searchParams?: u
         selectedMinute={selectedMinute}
         hasPoints={currentPoints.length > 0}
         onClear={handleClear}
+        mntBalance={mntBalance}
+        isBalanceLoading={isBalanceLoading}
+        isConnected={isConnected}
+        batchPnL={batchPnL}
       />
     </div>
 

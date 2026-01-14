@@ -97,10 +97,17 @@ export function ConnectWalletButton() {
                     <div className="w-5 h-5 rounded border-2 border-[#C1FF72] bg-[#C1FF72] flex items-center justify-center">
                       <div className="w-2 h-2 rounded-sm bg-[#1800AD]" />
                     </div>
-                    <span className="text-xs sm:text-sm">
-                      {account.displayName}
-                      {account.displayBalance ? ` (${account.displayBalance})` : ''}
-                    </span>
+                    <div className='text-start'>
+                      <span className="text-xs sm:text-sm">
+                        {account.displayName}
+                      </span>
+                      <div className="text-[10px] text-white font-venite">
+                        {account.displayBalance ? ` ${account.displayBalance}` : ''}
+                      </div>
+
+                    </div>
+
+
                   </div>
                 </motion.button>
               );
