@@ -6,7 +6,6 @@ import { TradingChart } from '@/components/chart/TradingChart';
 import { PatternDrawingBox } from '@/components/chart/PatternDrawingBox';
 import { usePredictionDrawing } from '@/hooks/usePredictionDrawing';
 import { usePriceData } from '@/hooks/usePriceData';
-import MeshGradients from '@/components/MeshGradients';
 
 export const dynamic = 'force-dynamic';
 
@@ -98,13 +97,6 @@ export default function PredictPage(_props: { params?: unknown; searchParams?: u
 
   return (
     <div className=" text-white pb-24 relative overflow-hidden">
-      {/* Mesh Gradient Background */}
-      <div className="fixed inset-0 z-0">
-        <MeshGradients />
-      </div>
-
-      {/* Overlay for readability */}
-      <div className="fixed inset-0 bg-black/60 pointer-events-none z-[1]" />
 
       {/* Header - God Casino style (no chart changes) */}
       <header className="sticky top-0 z-50 backdrop-blur-xl bg-[#0c0a06]/85 border-b border-amber-700/40 shadow-[0_2px_0_0_rgba(0,0,0,0.6)] relative">

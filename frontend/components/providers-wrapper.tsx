@@ -11,7 +11,7 @@ export function ProvidersWrapper({ children }: { children: React.ReactNode }) {
   }, []);
 
   if (!mounted) {
-    return <>{children}</>;
+    return null;
   }
 
   return <Providers>{children}</Providers>;

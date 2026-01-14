@@ -3,7 +3,7 @@ import "./globals.css";
 import { ProvidersWrapper } from "@/components/providers-wrapper";
 
 export const metadata: Metadata = {
-  title: "Resolv — Trade Your Conviction",
+  title: "Resolv — Draw your futures",
   description: "A trading game where predictions are expressed as drawings, not orders. Draw your price prediction and trade your market intuition.",
 };
 
