@@ -13,12 +13,12 @@ export const mantleSepoliaChain: Chain = {
   rpcUrls: {
     default: {
       http: [
-        process.env.NEXT_PUBLIC_MANTLE_RPC_URL || 'https://rpc.sepolia.mantle.xyz',
+        process.env.NEXT_PUBLIC_MANTLE_RPC_URL || 'https://mantle-sepolia.drpc.org',
       ],
     },
     public: {
       http: [
-        process.env.NEXT_PUBLIC_MANTLE_RPC_URL || 'https://rpc.sepolia.mantle.xyz',
+        process.env.NEXT_PUBLIC_MANTLE_RPC_URL || 'https://mantle-sepolia.drpc.org',
       ],
     },
   },

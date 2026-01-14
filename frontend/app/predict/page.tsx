@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { BrowserProvider, Contract, parseEther } from 'ethers';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useAccount, useBalance } from 'wagmi';
 import { mantleSepoliaChain } from '@/lib/blockchain/wagmi';
@@ -8,9 +9,20 @@ import { TradingChart } from '@/components/chart/TradingChart';
 import { PatternDrawingBox } from '@/components/chart/PatternDrawingBox';
 import { usePredictionDrawing } from '@/hooks/usePredictionDrawing';
 import { usePriceData } from '@/hooks/usePriceData';
-import { samplePredictionPoints } from '@/lib/prediction/samplePredictionPoints';
+import {
+  samplePredictionPoints,
+  uploadSampledPredictionPoints,
+} from '@/lib/prediction/samplePredictionPoints';
 
 export const dynamic = 'force-dynamic';
+
+const LINE_FUTURES_ABI = [
+  'function openPosition(uint16 _leverage, string _predictionCommitmentId) external payable returns (uint256)',
+];
+
+const DEFAULT_FUTURES_CONTRACT_ADDRESS =
+  process.env.NEXT_PUBLIC_FUTURES_CONTRACT_ADDRESS ||
+  '0xb7784EC48266EB7A6155910139025f35918Ac21F';
 
 // Props are intentionally not used - they're passed by Next.js but we don't need them
 export default function PredictPage(_props: { params?: unknown; searchParams?: unknown }) {
@@ -18,7 +30,6 @@ export default function PredictPage(_props: { params?: unknown; searchParams?: u
   const { data: mntBalance, isLoading: isBalanceLoading } = useBalance({
     address,
     chainId: mantleSepoliaChain.id,
-    watch: true,
   });
 
   const {
@@ -34,6 +45,8 @@ export default function PredictPage(_props: { params?: unknown; searchParams?: u
   const [barSpacing, setBarSpacing] = useState(3);
   const [selectedMinute, setSelectedMinute] = useState<number | null>(null);
   const [debugInfo, setDebugInfo] = useState<string>('');
+  const [amount, setAmount] = useState<number>(10);
+  const [leverage, setLeverage] = useState<number>(2500);
 
   const handleClear = () => {
     clearPrediction();
@@ -49,7 +62,10 @@ export default function PredictPage(_props: { params?: unknown; searchParams?: u
     setBarSpacing(prev => Math.max(prev - 0.5, 0.1));
   };
 
-  const handlePatternComplete = (points: Array<{ x: number; y: number }>, offsetMinutes: number) => {
+  const handlePatternComplete = async (
+    points: Array<{ x: number; y: number }>,
+    offsetMinutes: number,
+  ) => {
     if (!priceData || priceData.length === 0 || points.length === 0) return;
 
     const currentPrice = priceData[priceData.length - 1].value;
@@ -64,11 +80,110 @@ export default function PredictPage(_props: { params?: unknown; searchParams?: u
 
     // Use current REAL time instead of data timestamp
     const nowInSeconds = Math.floor(Date.now() / 1000);
-    const futureStartTime = nowInSeconds + (offsetMinutes * 60);
+    const futureStartTime = nowInSeconds + offsetMinutes * 60;
 
     const sampledPoints = samplePredictionPoints(points, 60);
     console.log('sampled prediction canvas points (<= 60):', sampledPoints);
 
+    let commitment: string | null = null;
+
+    if (!address) {
+      console.error('wallet not connected; cannot upload predictions or open position');
+    } else {
+      try {
+        const { commitmentId } = await uploadSampledPredictionPoints({
+          points: sampledPoints,
+          userAddress: address,
+          desiredCount: 60,
+        });
+        console.log('prediction commitment from backend:', commitmentId);
+        commitment = commitmentId;
+      } catch (err) {
+        console.error('failed to upload sampled prediction points', err);
+      }
+    }
+
+    if (commitment && typeof window !== 'undefined' && address) {
+      try {
+        // Validate commitmentId
+        if (!commitment || commitment.trim().length === 0) {
+          throw new Error('Invalid commitment ID: cannot be empty');
+        }
+
+        // Validate inputs
+        const lev = Number(leverage);
+        if (!Number.isFinite(lev) || lev < 1 || lev > 2500) {
+          throw new Error('Leverage must be a number between 1 and 2500');
+        }
+
+        const amt = Number(amount);
+        if (!Number.isFinite(amt) || amt < 10) {
+          throw new Error('Amount must be at least 10 MNT');
+        }
+
+        const ethereum = (window as unknown as { ethereum?: unknown }).ethereum;
+        if (!ethereum) {
+          throw new Error('No injected wallet found. Please install MetaMask.');
+        }
+
+        const provider = new BrowserProvider(ethereum as any);
+        const signer = await provider.getSigner();
+
+        const contract = new Contract(
+          DEFAULT_FUTURES_CONTRACT_ADDRESS,
+          LINE_FUTURES_ABI,
+          signer,
+        );
+
+        // Convert amount to wei
+        const valueInWei = parseEther(amt.toString());
+
+        console.log('Calling openPosition with:', {
+          leverage: lev,
+          leverageType: typeof lev,
+          commitmentId: commitment,
+          commitmentIdLength: commitment.length,
+          amount: amt,
+          valueInWei: valueInWei.toString(),
+          contractAddress: DEFAULT_FUTURES_CONTRACT_ADDRESS,
+        });
+
+        // Estimate gas first to catch any issues early
+        try {
+          const gasEstimate = await contract.openPosition.estimateGas(lev, commitment.trim(), {
+            value: valueInWei,
+          });
+          console.log('Gas estimate:', gasEstimate.toString());
+        } catch (gasErr) {
+          console.error('Gas estimation failed:', gasErr);
+          throw new Error(`Gas estimation failed: ${gasErr instanceof Error ? gasErr.message : String(gasErr)}`);
+        }
+
+        // Call contract - leverage must be uint16, commitmentId must be non-empty string
+        const tx = await contract.openPosition(lev, commitment.trim(), {
+          value: valueInWei,
+        });
+
+        console.log('openPosition tx sent:', tx.hash);
+        const receipt = await tx.wait();
+        console.log('openPosition tx confirmed:', receipt);
+      } catch (err) {
+        const message =
+          err && typeof err === 'object' && 'message' in err
+            ? String((err as { message: unknown }).message)
+            : 'Failed to open position on LineFutures';
+        console.error('failed to open position on LineFutures', err);
+        alert(`Error opening position: ${message}`);
+      }
+    } else {
+      if (!commitment) {
+        console.error('Cannot open position: no commitment ID');
+      }
+      if (!address) {
+        console.error('Cannot open position: wallet not connected');
+      }
+    }
+    
     const predictionPoints = sampledPoints.map((point) => {
       const normalizedX = point.x / canvasWidth;
       const time = futureStartTime + (normalizedX * 60);
@@ -246,7 +361,13 @@ export default function PredictPage(_props: { params?: unknown; searchParams?: u
 
       <div className="relative z-10 px-3 py-4 sm:px-4 sm:py-6 max-w-6xl mx-auto space-y-4">
         {/* Pattern Drawing Box */}
-        <PatternDrawingBox onPatternComplete={handlePatternComplete} />
+        <PatternDrawingBox
+          onPatternComplete={handlePatternComplete}
+          amount={amount}
+          leverage={leverage}
+          onAmountChange={setAmount}
+          onLeverageChange={setLeverage}
+        />
 
         {/* Main Chart Card - Casino style */}
         <div className="relative group">

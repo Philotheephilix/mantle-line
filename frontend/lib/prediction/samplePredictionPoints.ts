@@ -1,5 +1,8 @@
 export type CanvasPoint = { x: number; y: number };
 
+const DEFAULT_BACKEND_URL =
+  process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+
 export function samplePredictionPoints(
   points: CanvasPoint[],
   desiredCount = 60,
@@ -25,3 +28,53 @@ export function samplePredictionPoints(
   return result;
 }
 
+export async function uploadSampledPredictionPoints(options: {
+  points: CanvasPoint[];
+  userAddress: string;
+  desiredCount?: number;
+  backendUrl?: string;
+}): Promise<{ commitmentId: string; predictions: number[] }> {
+  const {
+    points,
+    userAddress,
+    desiredCount = 60,
+    backendUrl = DEFAULT_BACKEND_URL,
+  } = options;
+
+  if (!userAddress) {
+    throw new Error('uploadSampledPredictionPoints: userAddress is required');
+  }
+
+  const predictions = points.map((p) => p.y + 1);
+  console.log('predictions:', predictions);
+  console.log('backendUrl:', backendUrl);
+  console.log('userAddress:', userAddress);
+  const res = await fetch(`${backendUrl}/api/predictions/upload`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      predictions,
+      userAddress,
+    }),
+  });
+  console.log('res:', res);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(
+      body.error || `Prediction upload failed with status ${res.status}`,
+    );
+  }
+
+  const json = await res.json();
+  const commitmentId = json.commitmentId as string | undefined;
+
+  if (!commitmentId) {
+    throw new Error(
+      'Prediction upload succeeded but backend did not return commitmentId',
+    );
+  }
+
+  return { commitmentId, predictions };
+}

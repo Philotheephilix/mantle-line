@@ -10,9 +10,19 @@ interface PatternPoint {
 
 interface PatternDrawingBoxProps {
   onPatternComplete: (points: PatternPoint[], offsetMinutes: number) => void;
+  amount: number;
+  leverage: number;
+  onAmountChange: (amount: number) => void;
+  onLeverageChange: (leverage: number) => void;
 }
 
-export function PatternDrawingBox({ onPatternComplete }: PatternDrawingBoxProps) {
+export function PatternDrawingBox({
+  onPatternComplete,
+  amount,
+  leverage,
+  onAmountChange,
+  onLeverageChange,
+}: PatternDrawingBoxProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameRef = useRef<number | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -346,13 +356,26 @@ export function PatternDrawingBox({ onPatternComplete }: PatternDrawingBoxProps)
             disabled={points.length < 2}
             className="flex-1"
           />
-          <button
-            onClick={handleClear}
-            disabled={points.length === 0}
-            className="px-4 py-3 bg-gradient-to-b from-zinc-700/50 to-zinc-900/50 hover:from-zinc-600/50 hover:to-zinc-800/50 active:from-zinc-800/50 disabled:opacity-30 border border-zinc-600/30 rounded-xl text-zinc-300 text-sm font-bold transition-all duration-200 disabled:cursor-not-allowed"
-          >
-            ✕
-          </button>
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              min={0}
+              value={amount}
+              onChange={(e) => onAmountChange(Number(e.target.value) || 0)}
+              className="w-20 px-3 py-2 rounded-xl border border-zinc-600/50 bg-zinc-900/70 text-zinc-100 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/60"
+            />
+            <select
+              value={leverage}
+              onChange={(e) => onLeverageChange(Number(e.target.value))}
+              className="px-3 py-2 rounded-xl border border-zinc-600/50 bg-zinc-900/70 text-zinc-100 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/60"
+            >
+              {[100, 200, 500, 1000, 1500, 2000, 2500].map((lev) => (
+                <option key={lev} value={lev}>
+                  {lev}x
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
     </div>
