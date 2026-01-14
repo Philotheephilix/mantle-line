@@ -1,27 +1,171 @@
+/* Google Fonts - Inter */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap');
+
 @import "tailwindcss";
 
+/* Custom Fonts - Venite Adoremus */
+@font-face {
+  font-family: 'Venite Adoremus';
+  src: url('/fonts/VeniteAdoremus-rgRBA.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Venite Adoremus Straight';
+  src: url('/fonts/VeniteAdoremusStraight-Yzo6v.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --nyan-lime: #C1FF72;
+  --nyan-purple: #1800AD;
+  --nyan-pink: #FF6B9D;
+  --nyan-blue: #6BFFFF;
+  --background: #0a0014;
+  --foreground: #ffffff;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --color-nyan-lime: var(--nyan-lime);
+  --color-nyan-purple: var(--nyan-purple);
+  --color-nyan-pink: var(--nyan-pink);
+  --color-nyan-blue: var(--nyan-blue);
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-mono: "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Courier New", monospace;
-  --font-lobster: "Comic Sans MS", cursive, sans-serif;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --font-pixel: "Press Start 2P", "Comic Sans MS", cursive, sans-serif;
+  --font-venite: "Venite Adoremus", "Venite Adoremus Straight", cursive;
 }
 
 body {
-  background: var(--background);
+  background: linear-gradient(135deg, #0a0014 0%, #1800AD 50%, #0a0014 100%);
+  background-attachment: fixed;
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  min-height: 100vh;
+}
+
+/* Nyan theme utility classes */
+.nyan-text-lime {
+  color: #C1FF72;
+}
+
+.nyan-text-purple {
+  color: #1800AD;
+}
+
+.nyan-bg-lime {
+  background-color: #C1FF72;
+}
+
+.nyan-bg-purple {
+  background-color: #1800AD;
+}
+
+.nyan-border-lime {
+  border-color: #C1FF72;
+}
+
+.nyan-border-purple {
+  border-color: #1800AD;
+}
+
+/* Nyan gradient backgrounds */
+.nyan-gradient {
+  background: linear-gradient(135deg, #C1FF72 0%, #1800AD 100%);
+}
+
+.nyan-gradient-reverse {
+  background: linear-gradient(135deg, #1800AD 0%, #C1FF72 100%);
+}
+
+.nyan-gradient-text {
+  background: linear-gradient(90deg, #C1FF72, #1800AD);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Rainbow animation for special elements */
+@keyframes rainbow-shift {
+  0%, 100% { filter: hue-rotate(0deg); }
+  50% { filter: hue-rotate(30deg); }
+}
+
+@keyframes nyan-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes pixel-glow {
+  0%, 100% { 
+    box-shadow: 0 0 5px #C1FF72, 0 0 10px #C1FF72, 0 0 20px #1800AD;
+  }
+  50% { 
+    box-shadow: 0 0 10px #C1FF72, 0 0 20px #C1FF72, 0 0 40px #1800AD;
+  }
+}
+
+.nyan-animate {
+  animation: rainbow-shift 3s ease-in-out infinite;
+}
+
+.nyan-bounce {
+  animation: nyan-bounce 1s ease-in-out infinite;
+}
+
+.nyan-glow {
+  animation: pixel-glow 2s ease-in-out infinite;
+}
+
+/* Pixel-art style borders */
+.pixel-border {
+  border: 4px solid #C1FF72;
+  box-shadow: 
+    4px 4px 0 0 #1800AD,
+    -2px -2px 0 0 #C1FF72 inset;
+  image-rendering: pixelated;
+}
+
+/* Button styles */
+.nyan-button {
+  background: linear-gradient(180deg, #C1FF72 0%, #8FCC50 100%);
+  color: #1800AD;
+  font-weight: bold;
+  border: 3px solid #1800AD;
+  box-shadow: 4px 4px 0 0 #1800AD;
+  transition: all 0.1s ease;
+}
+
+.nyan-button:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 0 #1800AD;
+}
+
+.nyan-button:active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 0 #1800AD;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1800AD;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #C1FF72;
+  border: 2px solid #1800AD;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #A8E65F;
 }

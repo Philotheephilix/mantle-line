@@ -1,11 +1,11 @@
-/* Slot Machine Lever Button - Inspired by Vue-SlotMachine */
+/* Slot Machine Lever Button - Nyan Theme */
 
 /* Pixel-art styled slot machine lever */
 .slot-machine-button {
-  --primary: #0f0c14;
-  --border: #5c4a2c;
-  --accent: #d6a324;
-  --text: #f8e9b0;
+  --primary: #0a0014;
+  --border: #C1FF72;
+  --accent: #1800AD;
+  --text: #C1FF72;
   position: relative;
   display: flex;
   align-items: center;
@@ -28,7 +28,7 @@
   border-radius: 10px;
   background: var(--primary);
   box-shadow:
-    0 2px 0 #000,
+    4px 4px 0 var(--accent),
     inset 0 -2px 0 rgba(0,0,0,0.35);
 }
 
@@ -42,7 +42,7 @@
   height: 40px;
   border: 2px solid var(--border);
   border-radius: 6px;
-  background: #131017;
+  background: var(--accent);
   overflow: hidden;
 }
 
@@ -78,7 +78,7 @@
   border: 3px solid var(--border);
   border-left: none;
   border-radius: 0 4px 4px 0;
-  background: #221a12;
+  background: var(--accent);
   z-index: 1;
 }
 
@@ -91,7 +91,7 @@
   height: 40px;
   border: 3px solid var(--border);
   border-radius: 6px;
-  background: #221a12;
+  background: var(--accent);
   transition: all 350ms cubic-bezier(0.68, -0.55, 0.265, 1.55);
   z-index: 2;
 }
@@ -103,28 +103,28 @@
   right: -2px;
   width: 28px;
   height: 28px;
-  border: 3px solid var(--border);
+  border: 3px solid var(--primary);
   border-radius: 6px;
-  background: #dc2626; /* Red color */
+  background: #C1FF72;
   cursor: pointer;
   transition: all 500ms cubic-bezier(0.68, -0.55, 0.265, 1.55);
   z-index: 3;
-  box-shadow: 0 2px 0 #000, 0 0 20px rgba(220, 38, 38, 0.8);
+  box-shadow: 0 2px 0 #000, 0 0 20px rgba(193, 255, 114, 0.8);
   animation: leverGlow 2s ease-in-out infinite;
 }
 
 @keyframes leverGlow {
   0%, 100% {
-    box-shadow: 0 2px 0 #000, 0 0 20px rgba(220, 38, 38, 0.8);
+    box-shadow: 0 2px 0 #000, 0 0 20px rgba(193, 255, 114, 0.8);
   }
   50% {
-    box-shadow: 0 2px 0 #000, 0 0 30px rgba(220, 38, 38, 1), 0 0 40px rgba(220, 38, 38, 0.6);
+    box-shadow: 0 2px 0 #000, 0 0 30px rgba(193, 255, 114, 1), 0 0 40px rgba(193, 255, 114, 0.6);
   }
 }
 
 .lever-ball:hover {
   transform: scale(1.05);
-  box-shadow: 0 2px 0 #000, 0 0 25px rgba(220, 38, 38, 1);
+  box-shadow: 0 2px 0 #000, 0 0 25px rgba(193, 255, 114, 1);
 }
 
 .lever-ball:active {
@@ -208,4 +208,3 @@
     height: 16px;
   }
 }
-

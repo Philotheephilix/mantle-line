@@ -1,16 +1,20 @@
 'use client';
 
 import { useState } from 'react';
-import { ConnectButton } from '@rainbow-me/rainbowkit';
+import Image from 'next/image';
+import { motion, AnimatePresence } from 'framer-motion';
 import { TradingChart } from '@/components/chart/TradingChart';
 import { PatternDrawingBox } from '@/components/chart/PatternDrawingBox';
 import { usePredictionDrawing } from '@/hooks/usePredictionDrawing';
 import { usePriceData } from '@/hooks/usePriceData';
+import { Header, BottomControls } from '@/components/layout';
+import { NoiseEffect } from '@/components/ui/NoiseEffect';
+import SplashCursor from '@/components/ui/SplashCursor';
 
 export const dynamic = 'force-dynamic';
 
 // Props are intentionally not used - they're passed by Next.js but we don't need them
-export default function PredictPage(_props: { params?: unknown; searchParams?: unknown }) {
+export default function PredictPage() {
   const {
     isDrawing,
     currentPoints,
@@ -43,7 +47,6 @@ export default function PredictPage(_props: { params?: unknown; searchParams?: u
     if (!priceData || priceData.length === 0 || points.length === 0) return;
 
     const currentPrice = priceData[priceData.length - 1].value;
-    const currentTime = priceData[priceData.length - 1].time;
 
     const canvasWidth = 600;
     const canvasHeight = 200;
@@ -96,282 +99,172 @@ export default function PredictPage(_props: { params?: unknown; searchParams?: u
   };
 
   return (
-    <div className=" text-white pb-24 relative overflow-hidden">
 
-      {/* Header - God Casino style (no chart changes) */}
-      <header className="sticky top-0 z-50 backdrop-blur-xl bg-[#0c0a06]/85 border-b border-amber-700/40 shadow-[0_2px_0_0_rgba(0,0,0,0.6)] relative">
-        <div className="px-4 py-3 sm:py-4 max-w-6xl mx-auto">
-          <div className="flex items-center justify-between gap-3">
-            {/* Logo with divine glow */}
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <div className="absolute inset-0 rounded-lg bg-amber-400/40 blur-lg opacity-60" />
-                <h1
-                  className="relative text-xl sm:text-3xl font-black tracking-[0.2em]"
-                  style={{ fontFamily: 'Helvetica', background: 'linear-gradient(90deg,#f5e8c6,#d4b56a)', WebkitBackgroundClip: 'text', color: 'transparent' }}
-                >
-                  RESOLV
-                </h1>
-              </div>
-              <span className="hidden sm:inline-flex px-2 py-0.5 text-[10px] font-bold bg-gradient-to-r from-amber-500 to-yellow-400 text-black rounded-full uppercase tracking-wider">
-                Beta
-              </span>
+    <div className="text-white pb-24 relative overflow-hidden">
+      {/* <SplashCursor /> */}
+
+
+      {/* Header */}
+      <Header
+        showStatus={currentPoints.length > 0}
+        statusText={selectedMinute ? `+${selectedMinute}m` : undefined}
+      />
+
+      <motion.div
+        className="relative z-10 px-3 py-4 sm:px-4 sm:py-6 max-w-6xl mx-auto space-y-4"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+
+        {/* Main Chart Card - Nyan style */}
+        <NoiseEffect opacity={0.7} className="">
+          <motion.div
+            className="relative group"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.3 }}
+          >
+            {/* Glow effect */}
+            <div className="absolute -inset-1 bg-gradient-to-r from-[#C1FF72] via-[#1800AD] to-[#C1FF72] rounded-2xl blur opacity-30 group-hover:opacity-50 transition duration-500 animate-pulse" />
+
+            <div className="relative bg-[#0a0014] rounded-2xl border-4 border-[#C1FF72] p-3 sm:p-4 overflow-hidden shadow-[6px_6px_0_0_#1800AD]">
+              {/* Subtle inner glow */}
+              <div className="absolute inset-0 bg-gradient-to-t from-[#1800AD]/20 to-transparent pointer-events-none" />
+
+              {/* Drawing Indicator */}
+              <AnimatePresence>
+                {isDrawing && (
+                  <motion.div
+                    className="absolute top-3 right-3 z-20 flex items-center gap-2 px-3 py-1.5 bg-[#C1FF72] rounded-full shadow-[2px_2px_0_0_#1800AD]"
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    exit={{ scale: 0 }}
+                  >
+                    <motion.div
+                      className="w-1.5 h-1.5 rounded-full bg-[#1800AD]"
+                      animate={{ scale: [1, 1.5, 1] }}
+                      transition={{ repeat: Infinity, duration: 0.5 }}
+                    />
+                    <span className="text-[11px] font-bold text-[#1800AD] uppercase tracking-wider">Live</span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <TradingChart
+                isDark={true}
+                isDrawing={isDrawing}
+                isConfirmed={false}
+                currentPoints={currentPoints}
+                selectedMinute={selectedMinute}
+                onStartDrawing={startDrawing}
+                onAddPoint={addPoint}
+                onFinishDrawing={finishDrawing}
+                barSpacing={barSpacing}
+              />
             </div>
+          </motion.div>
+        </NoiseEffect>
 
-            {/* Right side - Connect Wallet & Status */}
-            <div className="flex items-center gap-2 sm:gap-3">
-              {/* Connect Wallet Button - RainbowKit */}
-              <div className="[&_button]:relative [&_button]:px-3 [&_button]:py-2 [&_button]:sm:px-4 [&_button]:sm:py-2.5 [&_button]:border-3 [&_button]:border-amber-700/60 [&_button]:bg-[#0f0c14] [&_button]:rounded-lg [&_button]:shadow-[0_2px_0_0_rgba(0,0,0,0.6)] [&_button]:hover:translate-y-[-1px] [&_button]:active:translate-y-[1px] [&_button]:active:shadow-none [&_button]:transition-all [&_button]:duration-150 [&_button]:text-xs [&_button]:sm:text-sm [&_button]:font-bold [&_button]:text-amber-200 [&_button]:uppercase [&_button]:tracking-wider [&_button]:font-mono">
-                <ConnectButton.Custom>
-                  {({
-                    account,
-                    chain,
-                    openAccountModal,
-                    openChainModal,
-                    openConnectModal,
-                    authenticationStatus,
-                    mounted,
-                  }) => {
-                    const ready = mounted && authenticationStatus !== 'loading';
-                    const connected =
-                      ready &&
-                      account &&
-                      chain &&
-                      (!authenticationStatus ||
-                        authenticationStatus === 'authenticated');
 
-                    return (
-                      <div
-                        {...(!ready && {
-                          'aria-hidden': true,
-                          style: {
-                            opacity: 0,
-                            pointerEvents: 'none',
-                            userSelect: 'none',
-                          },
-                        })}
-                      >
-                        {(() => {
-                          if (!connected) {
-                            return (
-                              <button
-                                onClick={openConnectModal}
-                                type="button"
-                                className="relative group"
-                                style={{
-                                  imageRendering: 'pixelated',
-                                }}
-                              >
-                                {/* Pixel art inner border */}
-                                <div className="absolute inset-[3px] border border-dashed border-amber-600/30 rounded-md pointer-events-none" />
-
-                                {/* Glow effect */}
-                                <div className="absolute inset-0 bg-gradient-to-r from-amber-500/0 via-amber-500/20 to-amber-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg" />
-
-                                {/* Button content */}
-                                <div className="relative flex items-center gap-2">
-                                  <div className="w-5 h-5 sm:w-6 sm:h-6 rounded border-2 border-amber-600/50 bg-gradient-to-br from-amber-400 to-yellow-600 flex items-center justify-center">
-                                    <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-sm bg-amber-900" />
-                                  </div>
-                                  <span>Connect</span>
-                                </div>
-                              </button>
-                            );
-                          }
-
-                          if (chain.unsupported) {
-                            return (
-                              <button
-                                onClick={openChainModal}
-                                type="button"
-                                className="relative px-3 py-2 sm:px-4 sm:py-2.5 border-3 border-red-700/60 bg-[#0f0c14] rounded-lg shadow-[0_2px_0_0_rgba(0,0,0,0.6)] hover:translate-y-[-1px] active:translate-y-[1px] active:shadow-none transition-all duration-150 text-xs sm:text-sm font-bold text-red-200 uppercase tracking-wider font-mono"
-                              >
-                                Wrong network
-                              </button>
-                            );
-                          }
-
-                          return (
-                            <button
-                              onClick={openAccountModal}
-                              type="button"
-                              className="relative group"
-                              style={{
-                                imageRendering: 'pixelated',
-                              }}
-                            >
-                              {/* Pixel art inner border */}
-                              <div className="absolute inset-[3px] border border-dashed border-amber-600/30 rounded-md pointer-events-none" />
-
-                              {/* Glow effect */}
-                              <div className="absolute inset-0 bg-gradient-to-r from-amber-500/0 via-amber-500/20 to-amber-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg" />
-
-                              {/* Button content */}
-                              <div className="relative flex items-center gap-2">
-                                <div className="w-5 h-5 sm:w-6 sm:h-6 rounded border-2 border-amber-600/50 bg-gradient-to-br from-amber-400 to-yellow-600 flex items-center justify-center">
-                                  <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-sm bg-amber-900" />
-                                </div>
-                                <span className="text-xs sm:text-sm font-bold text-amber-200 uppercase tracking-wider font-mono">
-                                  {account.displayName}
-                                  {account.displayBalance
-                                    ? ` (${account.displayBalance})`
-                                    : ''}
-                                </span>
-                              </div>
-                            </button>
-                          );
-                        })()}
-                      </div>
-                    );
-                  }}
-                </ConnectButton.Custom>
-              </div>
-
-              {/* Status badge */}
-              {currentPoints.length > 0 && (
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30 rounded-full">
-                  <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shadow-lg shadow-amber-500/50" />
-                  <span className="text-xs font-semibold text-amber-400">
-                    +{selectedMinute}m
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <div className="relative z-10 px-3 py-4 sm:px-4 sm:py-6 max-w-6xl mx-auto space-y-4">
         {/* Pattern Drawing Box */}
-        <PatternDrawingBox onPatternComplete={handlePatternComplete} />
+        <NoiseEffect opacity={0.5} className="">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.2 }}
+          >
+            <PatternDrawingBox onPatternComplete={handlePatternComplete} />
+          </motion.div>
+        </NoiseEffect>
 
-        {/* Main Chart Card - Casino style */}
-        <div className="relative group">
-          {/* Glow effect */}
-          <div className="absolute -inset-0.5 bg-gradient-to-r from-amber-600 via-yellow-600 to-orange-600 rounded-2xl blur opacity-20 group-hover:opacity-30 transition duration-500" />
 
-          <div className="relative bg-gradient-to-b from-[#0b0a0f] to-[#0c0a11] rounded-2xl border border-amber-700/30 p-3 sm:p-4 overflow-hidden shadow-[0_2px_0_0_rgba(0,0,0,0.6)]">
-            {/* Subtle inner glow (keep chart untouched) */}
-            <div className="absolute inset-0 bg-gradient-to-t from-amber-900/10 to-transparent pointer-events-none" />
 
-            {/* Drawing Indicator */}
-            {isDrawing && (
-              <div className="absolute top-3 right-3 z-20 flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-amber-600 to-yellow-600 rounded-full shadow-lg shadow-amber-500/30">
-                <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                <span className="text-[11px] font-bold text-white uppercase tracking-wider">Live</span>
-              </div>
-            )}
-
-            <TradingChart
-              isDark={true}
-              isDrawing={isDrawing}
-              isConfirmed={false}
-              currentPoints={currentPoints}
-              selectedMinute={selectedMinute}
-              onStartDrawing={startDrawing}
-              onAddPoint={addPoint}
-              onFinishDrawing={finishDrawing}
-              barSpacing={barSpacing}
-            />
-          </div>
-        </div>
 
         {/* Wallet Balance & Profit - pixel art style */}
-        <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2">
-          <span className="text-sm sm:text-base text-gray-300 font-semibold whitespace-nowrap">My Balance:</span>
+        <motion.div
+          className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+        >
+          <span className="text-sm sm:text-base text-[#C1FF72] font-bold whitespace-nowrap">My Balance:</span>
 
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 flex-1">
             {/* Wallet pill - pixel look */}
-            <div className="flex-1 max-w-sm">
-              <div className="flex items-center gap-2 px-3 py-2 rounded-md border-2 border-[#5c4a2c] bg-[#0d0b11] shadow-[0_2px_0_0_#000]">
-                <img
+            <motion.div
+              className="flex-1 max-w-sm"
+              whileHover={{ scale: 1.02 }}
+            >
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg border-3 border-[#C1FF72] bg-[#1800AD]/50 shadow-[3px_3px_0_0_#C1FF72]">
+                <Image
                   src="/wallet.png"
                   alt="Wallet"
+                  width={40}
+                  height={40}
                   className="w-9 h-9 sm:w-10 sm:h-10"
                   style={{ imageRendering: 'pixelated' }}
                 />
-                <span className="font-mono text-sm sm:text-base text-gray-200 tracking-tight">0.000 SOL</span>
+                <span className="font-mono text-sm sm:text-base text-[#C1FF72] tracking-tight">0.000 MNT</span>
               </div>
-            </div>
+            </motion.div>
 
             {/* Profit pill - pixel look */}
-            <div className="flex-1 max-w-sm">
-              <div className="flex items-center gap-2 px-3 py-2 rounded-md border-2 border-[#b07a1f] bg-[#0d0b11] shadow-[0_2px_0_0_#000]">
-                <img
+            <motion.div
+              className="flex-1 max-w-sm"
+              whileHover={{ scale: 1.02 }}
+            >
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg border-3 border-[#C1FF72] bg-[#1800AD]/50 shadow-[3px_3px_0_0_#C1FF72]">
+                <Image
                   src="/coin stack.png"
                   alt="Profit"
+                  width={40}
+                  height={40}
                   className="w-9 h-9 sm:w-10 sm:h-10"
                   style={{ imageRendering: 'pixelated' }}
                 />
-                <span className="font-mono text-sm sm:text-base text-gray-200 tracking-tight">+0.00</span>
+                <span className="font-mono text-sm sm:text-base text-[#C1FF72] tracking-tight">+0.00</span>
               </div>
-            </div>
+            </motion.div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Status Info */}
-        {debugInfo && (
-          <div className="relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-r from-amber-500/20 via-yellow-500/20 to-amber-500/20 animate-pulse" />
-            <div className="relative flex items-center justify-center gap-2 px-4 py-3 bg-black/40 border border-amber-500/30 rounded-xl">
-              <span className="text-lg">🎯</span>
-              <span className="text-sm font-bold text-amber-400">
-                Prediction Set: {debugInfo}
-              </span>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Bottom Controls - God casino bar (chart untouched) */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 relative">
-        <div className="absolute inset-0 bg-gradient-to-b from-[#050308] to-transparent" />
-        <div className="relative px-4 py-4 sm:py-5 border-t border-amber-700/30 shadow-[0_-2px_0_0_rgba(0,0,0,0.6)]">
-          <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
-            {/* Zoom Controls */}
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleZoomOut}
-                className="w-11 h-11 flex items-center justify-center bg-[#0f0c14] border-2 border-amber-700/40 rounded-md text-amber-200 text-xl font-bold transition-all duration-200 shadow-[0_2px_0_0_rgba(0,0,0,0.6)] hover:translate-y-[-1px]"
-              >
-                −
-              </button>
-              <button
-                onClick={handleZoomIn}
-                className="w-11 h-11 flex items-center justify-center bg-[#0f0c14] border-2 border-amber-700/40 rounded-md text-amber-200 text-xl font-bold transition-all duration-200 shadow-[0_2px_0_0_rgba(0,0,0,0.6)] hover:translate-y-[-1px]"
-              >
-                +
-              </button>
-            </div>
-
-            {/* Status - Center */}
-            <div className="flex-1 text-end">
-              {selectedMinute && currentPoints.length > 0 ? (
-                <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/30 rounded-full">
-                  <span className="text-amber-400 animate-pulse">●</span>
-                  <span className="text-sm font-semibold text-amber-400">
-                    +{selectedMinute}m Active
-                  </span>
-                </div>
-              ) : (
-                <span className="text-sm text-amber-400/60 font-medium">
-                  Draw your futures ↑
+        <AnimatePresence>
+          {debugInfo && (
+            <motion.div
+              className="relative overflow-hidden"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-[#C1FF72]/20 via-[#1800AD]/20 to-[#C1FF72]/20 animate-pulse" />
+              <div className="relative flex items-center justify-center gap-2 px-4 py-3 bg-[#0a0014]/60 border-2 border-[#C1FF72] rounded-xl">
+                <motion.span
+                  className="text-lg"
+                  animate={{ rotate: [0, 10, -10, 0] }}
+                  transition={{ repeat: Infinity, duration: 1 }}
+                >
+                  🎯
+                </motion.span>
+                <span className="text-sm font-bold text-[#C1FF72]">
+                  Prediction Set: {debugInfo}
                 </span>
-              )}
-            </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
 
-            {/* Clear Button - Casino danger style */}
-            {currentPoints.length > 0 && (
-              <button
-                onClick={handleClear}
-                className="px-5 py-2.5 bg-gradient-to-b from-red-600/30 to-red-900/30 hover:from-red-500/40 hover:to-red-800/40 active:from-red-700/50 active:to-red-900/50 border border-red-500/40 rounded-xl text-red-400 text-sm font-bold transition-all duration-200 shadow-lg shadow-red-900/20"
-              >
-                Clear
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
+      {/* Bottom Controls */}
+      <BottomControls
+        onZoomIn={handleZoomIn}
+        onZoomOut={handleZoomOut}
+        selectedMinute={selectedMinute}
+        hasPoints={currentPoints.length > 0}
+        onClear={handleClear}
+      />
     </div>
+
   );
 }
