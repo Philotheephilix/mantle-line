@@ -3,12 +3,23 @@
 import { useRef, useCallback, MouseEvent, useState, useEffect } from 'react';
 import type { IChartApi, ISeriesApi, Time } from 'lightweight-charts';
 import type { PredictionPoint, DirectionalMatch } from '@/types/prediction';
+import './nyan-cat.css';
+
+const rainbowColors = [
+  '#ff0000', // Red
+  '#ff9900', // Orange
+  '#ffff00', // Yellow
+  '#33ff00', // Green
+  '#0099ff', // Blue
+  '#6633ff', // Purple
+];
 
 interface PredictionOverlayProps {
   chartRef: React.RefObject<{
     chart: IChartApi | null;
     series: ISeriesApi<any> | null;
   }>;
+  catPosition?: { x: number; y: number } | null;
   isDrawing: boolean;
   isConfirmed: boolean;
   points: PredictionPoint[];
@@ -24,6 +35,7 @@ interface PredictionOverlayProps {
 
 export function PredictionOverlay({
   chartRef,
+  catPosition,
   isDrawing,
   isConfirmed,
   points,
@@ -205,7 +217,8 @@ export function PredictionOverlay({
   );
 
   // Generate smooth Catmull-Rom spline curve like the reference image
-  const generateSmoothPath = useCallback((points: PredictionPoint[]): string => {
+  // When not drawing, anchors path to cat position so rainbow trails behind cat
+  const generateSmoothPath = useCallback((points: PredictionPoint[], anchorToCat: boolean = false): string => {
     if (points.length === 0) return '';
 
     // Convert all points to current pixel coordinates, passing all points for reference
@@ -214,17 +227,25 @@ export function PredictionOverlay({
       .filter(p => p !== null) as { x: number; y: number }[];
 
     if (pixelPoints.length === 0) return '';
-    if (pixelPoints.length === 1) return `M ${pixelPoints[0].x},${pixelPoints[0].y}`;
-    if (pixelPoints.length === 2) return `M ${pixelPoints[0].x},${pixelPoints[0].y} L ${pixelPoints[1].x},${pixelPoints[1].y}`;
+
+    // Anchor path to cat position when not drawing (rainbow trails behind cat)
+    const anchoredPoints =
+      anchorToCat && catPosition
+        ? [{ x: catPosition.x, y: catPosition.y }, ...pixelPoints]
+        : pixelPoints;
+
+    if (anchoredPoints.length === 1) return `M ${anchoredPoints[0].x},${anchoredPoints[0].y}`;
+    if (anchoredPoints.length === 2)
+      return `M ${anchoredPoints[0].x},${anchoredPoints[0].y} L ${anchoredPoints[1].x},${anchoredPoints[1].y}`;
 
     // Sample points for smooth curve
     const sampledPoints = [];
-    const sampleRate = Math.max(1, Math.floor(pixelPoints.length / 20)); // Sample every N points
-    for (let i = 0; i < pixelPoints.length; i += sampleRate) {
-      sampledPoints.push(pixelPoints[i]);
+    const sampleRate = Math.max(1, Math.floor(anchoredPoints.length / 20)); // Sample every N points
+    for (let i = 0; i < anchoredPoints.length; i += sampleRate) {
+      sampledPoints.push(anchoredPoints[i]);
     }
-    if (sampledPoints[sampledPoints.length - 1] !== pixelPoints[pixelPoints.length - 1]) {
-      sampledPoints.push(pixelPoints[pixelPoints.length - 1]);
+    if (sampledPoints[sampledPoints.length - 1] !== anchoredPoints[anchoredPoints.length - 1]) {
+      sampledPoints.push(anchoredPoints[anchoredPoints.length - 1]);
     }
 
     // Generate smooth Bezier curve path
@@ -242,7 +263,7 @@ export function PredictionOverlay({
     }
 
     return d;
-  }, [convertToPixelCoordinates]);
+  }, [catPosition, convertToPixelCoordinates]);
 
   // Get control points to display (start, middle, end)
   const getControlPoints = useCallback((points: PredictionPoint[]) => {
@@ -412,157 +433,62 @@ export function PredictionOverlay({
         </>
       )}
 
-      {points.length > 0 && (
-        <>
-          {/* Smooth curve path - Yellow like Euphoria predictions */}
-          <path
-            d={generateSmoothPath(points)}
-            stroke="#fbbf24"
-            strokeWidth={4}
-            fill="none"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            opacity={1}
-            style={{
-              filter: 'drop-shadow(0 0 8px rgba(251, 191, 36, 0.8))'
-            }}
-          />
-
-          {/* Control points (yellow circles like Euphoria) */}
-          {controlPoints.map((point, index) => (
-            <g key={index}>
-              {/* Outer glow */}
-              <circle
-                cx={point.x}
-                cy={point.y}
-                r={8}
-                fill="rgba(251, 191, 36, 0.3)"
-              />
-              {/* Main circle */}
-              <circle
-                cx={point.x}
-                cy={point.y}
-                r={6}
-                fill="#fbbf24"
-                stroke="#0a0a0a"
-                strokeWidth={2}
-              />
-            </g>
-          ))}
-        </>
+      {/* While drawing - lime green line */}
+      {isDrawing && points.length > 0 && (
+        <path
+          d={generateSmoothPath(points, false)}
+          stroke="#C1FF72"
+          strokeWidth={4}
+          fill="none"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          opacity={1}
+          style={{
+            filter: 'drop-shadow(0 0 8px rgba(193, 255, 114, 0.8))'
+          }}
+        />
       )}
 
-      {/* Overlap points - highlight where prediction matches actual price */}
-      {overlapPoints.length > 0 && chartRef.current?.chart && chartRef.current?.series && (
-        <>
-          {overlapPoints.map((overlap, index) => {
-            try {
-              const timeScale = chartRef.current!.chart!.timeScale();
-              const x = timeScale.timeToCoordinate(overlap.time as Time);
-              const y = chartRef.current!.series!.priceToCoordinate(overlap.price);
+      {/* After drawing - lime green prediction line behind cat */}
+      {!isDrawing && points.length > 0 && catPosition && (
+        (() => {
+          const pixelPoints = points
+            .map(p => convertToPixelCoordinates(p, points))
+            .filter(p => p !== null) as { x: number; y: number }[];
+          
+          if (pixelPoints.length === 0) return null;
 
-              if (x === null || y === null) return null;
+          // Keep original drawn shape, but shift Y to be centered on cat's Y level
+          const avgY = pixelPoints.reduce((sum, p) => sum + p.y, 0) / pixelPoints.length;
+          const yOffset = catPosition.y - avgY;
+          const shiftedPoints = pixelPoints.map(p => ({ x: p.x, y: p.y + yOffset }));
 
-              return (
-                <g key={`overlap-${index}`}>
-                  {/* Pulsing outer ring */}
-                  <circle
-                    cx={x}
-                    cy={y}
-                    r={12}
-                    fill="none"
-                    stroke="#fbbf24"
-                    strokeWidth={2}
-                    opacity={0.6}
-                    className="animate-ping"
-                  />
-                  {/* Inner glow */}
-                  <circle
-                    cx={x}
-                    cy={y}
-                    r={10}
-                    fill="rgba(251, 191, 36, 0.4)"
-                  />
-                  {/* Center dot */}
-                  <circle
-                    cx={x}
-                    cy={y}
-                    r={5}
-                    fill="#fbbf24"
-                    stroke="#0a0a0a"
-                    strokeWidth={2}
-                  />
-                </g>
-              );
-            } catch (error) {
-              return null;
-            }
-          })}
-        </>
+          // Generate smooth path preserving the drawn shape
+          let d = `M ${shiftedPoints[0].x},${shiftedPoints[0].y}`;
+          for (let i = 1; i < shiftedPoints.length; i++) {
+            const prev = shiftedPoints[i - 1];
+            const curr = shiftedPoints[i];
+            const cpx = prev.x + (curr.x - prev.x) / 2;
+            const cpy = prev.y + (curr.y - prev.y) / 2;
+            d += ` Q ${cpx},${cpy} ${curr.x},${curr.y}`;
+          }
+
+          return (
+            <path
+              d={d}
+              stroke="#C1FF72"
+              strokeWidth={4}
+              fill="none"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{
+                filter: 'drop-shadow(0 0 8px rgba(193, 255, 114, 0.8))'
+              }}
+            />
+          );
+        })()
       )}
 
-      {/* Directional Match Points - Green "+" Symbols */}
-      {directionalMatches.length > 0 && chartRef.current?.chart && chartRef.current?.series && (
-        <>
-          {directionalMatches.map((match, index) => {
-            try {
-              const timeScale = chartRef.current!.chart!.timeScale();
-              const x = timeScale.timeToCoordinate(match.time as Time);
-              const y = chartRef.current!.series!.priceToCoordinate(match.price);
-
-              if (x === null || y === null) return null;
-
-              return (
-                <g key={`directional-match-${index}`}>
-                  {/* Pulsing green glow */}
-                  <circle
-                    cx={x}
-                    cy={y}
-                    r={16}
-                    fill="rgba(34, 197, 94, 0.15)"
-                    className="animate-pulse"
-                  />
-
-                  {/* "+" Symbol */}
-                  {/* Vertical line */}
-                  <line
-                    x1={x}
-                    y1={y - 10}
-                    x2={x}
-                    y2={y + 10}
-                    stroke="#22c55e"
-                    strokeWidth={3}
-                    strokeLinecap="round"
-                  />
-                  {/* Horizontal line */}
-                  <line
-                    x1={x - 10}
-                    y1={y}
-                    x2={x + 10}
-                    y2={y}
-                    stroke="#22c55e"
-                    strokeWidth={3}
-                    strokeLinecap="round"
-                  />
-
-                  {/* Outer circle */}
-                  <circle
-                    cx={x}
-                    cy={y}
-                    r={12}
-                    fill="none"
-                    stroke="#22c55e"
-                    strokeWidth={2.5}
-                    opacity={0.8}
-                  />
-                </g>
-              );
-            } catch (error) {
-              return null;
-            }
-          })}
-        </>
-      )}
     </svg>
   );
 }

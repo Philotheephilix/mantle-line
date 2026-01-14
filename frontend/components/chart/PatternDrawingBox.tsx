@@ -5,6 +5,24 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import { SlotMachineLeverButton } from '@/components/ui/SlotMachineLever';
 
+const rainbowStops = ['#ff0000', '#ff9900', '#ffff00', '#33ff00', '#0099ff', '#6633ff'];
+
+const createStrokeGradient = (ctx: CanvasRenderingContext2D, x1: number, y1: number, x2: number, y2: number) => {
+  const gradient = ctx.createLinearGradient(x1, y1, x2, y2);
+  rainbowStops.forEach((color, index) => {
+    gradient.addColorStop(index / (rainbowStops.length - 1), color);
+  });
+  return gradient;
+};
+
+const createPointGradient = (ctx: CanvasRenderingContext2D, x: number, y: number) => {
+  const gradient = ctx.createRadialGradient(x, y, 0, x, y, 12);
+  rainbowStops.forEach((color, index) => {
+    gradient.addColorStop(index / (rainbowStops.length - 1), color);
+  });
+  return gradient;
+};
+
 interface PatternPoint {
   x: number;
   y: number;
@@ -55,7 +73,9 @@ export function PatternDrawingBox({
     if (!ctx || !canvas) return;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#C1FF72';
+    ctx.fillStyle = createPointGradient(ctx, coords.x, coords.y);
+    ctx.shadowColor = '#ff66ff';
+    ctx.shadowBlur = 10;
     ctx.beginPath();
     ctx.arc(coords.x, coords.y, 4, 0, 2 * Math.PI);
     ctx.fill();
@@ -76,15 +96,15 @@ export function PatternDrawingBox({
     const ctx = canvas?.getContext('2d');
     if (!ctx) return;
 
-    ctx.strokeStyle = '#C1FF72';
-    ctx.lineWidth = 4;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.shadowColor = '#C1FF72';
-    ctx.shadowBlur = 10;
-
     if (points.length > 0) {
       const lastPoint = points[points.length - 1];
+      const gradient = createStrokeGradient(ctx, lastPoint.x, lastPoint.y, coords.x, coords.y);
+      ctx.strokeStyle = gradient;
+      ctx.lineWidth = 4;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.shadowColor = '#ff66ff';
+      ctx.shadowBlur = 10;
       ctx.beginPath();
       ctx.moveTo(lastPoint.x, lastPoint.y);
       ctx.lineTo(coords.x, coords.y);
@@ -101,10 +121,13 @@ export function PatternDrawingBox({
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+    // Draw gradient based on first/last point so the stretch animation keeps rainbow hues stable
+    const startPoint = pointsToDraw[0];
+    const endPoint = pointsToDraw[pointsToDraw.length - 1];
+
     if (pointsToDraw.length === 1) {
-      // Draw single point
-      ctx.fillStyle = '#C1FF72';
-      ctx.shadowColor = '#C1FF72';
+      ctx.fillStyle = createPointGradient(ctx, startPoint.x, startPoint.y);
+      ctx.shadowColor = '#ff66ff';
       ctx.shadowBlur = 10;
       ctx.beginPath();
       ctx.arc(pointsToDraw[0].x, pointsToDraw[0].y, 4, 0, 2 * Math.PI);
@@ -113,11 +136,12 @@ export function PatternDrawingBox({
     }
 
     // Draw path
-    ctx.strokeStyle = '#C1FF72';
+    const gradient = createStrokeGradient(ctx, startPoint.x, startPoint.y, endPoint.x, endPoint.y);
+    ctx.strokeStyle = gradient;
     ctx.lineWidth = 4;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    ctx.shadowColor = '#C1FF72';
+    ctx.shadowColor = '#ff66ff';
     ctx.shadowBlur = 10;
 
     ctx.beginPath();
