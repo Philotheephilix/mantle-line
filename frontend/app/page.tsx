@@ -58,12 +58,12 @@ export default function Home() {
         {/* Content overlay */}
         <div className="relative z-10 flex-1">
           {/* Hero Section */}
-          <section className="flex min-h-[70vh] flex-col items-center justify-center px-4 py-20 text-start">
+          <section className="flex min-h-[70vh] flex-col items-center justify-start px-4 py-20 text-start">
 
 
 
             <motion.div
-              className="max-w-4xl space-y-6"
+              className="max-w-3xl space-y-6"
               variants={containerVariants}
               initial="hidden"
               animate="visible"
@@ -83,12 +83,12 @@ export default function Home() {
                 <Image
                   src="/logo.png"
                   alt="Resolv Logo"
-                  width={120}
-                  height={120}
+                  width={80}
+                  height={80}
                   className="rounded-xl drop-shadow-[0_0_30px_#C1FF72]"
                 />
                 <motion.h1
-                  className="text-6xl font-bold font-venite leading-tight tracking-[0.3em] text-[#C1FF72] drop-shadow-lg md:text-7xl lg:text-8xl"
+                  className="text-6xl font-bold font-venite leading-tight tracking-[0.3em] text-[#C1FF72] drop-shadow-lg md:text-6xl"
                   variants={itemVariants}
                   style={{ textShadow: '4px 4px 0 #1800AD, -2px -2px 0 #0a0014' }}
                 >
@@ -100,10 +100,18 @@ export default function Home() {
 
 
               <motion.p
-                className="mt-10 text-2xl font-bold text-white drop-shadow-md md:text-3xl lg:text-4xl"
+                className="mt-10 text-2xl font-bold text-white drop-shadow-md md:text-2xl"
                 variants={itemVariants}
               >
                 We&apos;ve invented a new way to trade futures. <br /> <span className="text-[#C1FF72]">Draw your futures.</span>
+              </motion.p>
+
+              <motion.p
+                className="ttext-md leading-relaxed text-white/80"
+                variants={itemVariants}
+              >
+                A trading game where <strong className="text-[#C1FF72]">futures trades are expressed as drawings</strong>, not orders.
+                Turn your market intuition into entertainment finance.
               </motion.p>
               <Image
                 src="https://i.giphy.com/aTjXudsKhB35df6RFf.webp"
@@ -112,29 +120,24 @@ export default function Home() {
                 height={161}
                 className="w-[320px] -mb-5 -mt-14 h-[202px] object-contain filter hue-rotate-40 brightness-150 contrast-120"
               />
-              <motion.p
-                className="ttext-lg leading-relaxed text-white/80 md:text-xl"
-                variants={itemVariants}
-              >
-                A trading game where <strong className="text-[#C1FF72]">futures trades are expressed as drawings</strong>, not orders.
-                Turn your market intuition into entertainment finance.
-              </motion.p>
 
               <motion.div
                 className="flex flex-col items-center justify-start gap-4 pt-2 sm:flex-row"
                 variants={itemVariants}
               >
+
                 <motion.div
                   whileHover={{ scale: 1.05, x: -2, y: -2 }}
                   whileTap={{ scale: 0.95, x: 2, y: 2 }}
                 >
                   <Link
                     href="/predict"
-                    className="inline-block px-8 py-4 text-lg font-bold text-[#1800AD] bg-[#C1FF72] border-4 border-[#1800AD] rounded-xl shadow-[6px_6px_0_0_#000000] transition-all hover:shadow-[8px_8px_0_0_#000000]"
+                    className="inline-block px-8 py-4 text-lg font-bold text-[#C1FF72] bg-[#1800AD] border-4 border-[#C1FF72] rounded-xl shadow-[6px_6px_0_0_#000000] transition-all hover:shadow-[8px_8px_0_0_#000000]"
                   >
                     Play Now
                   </Link>
                 </motion.div>
+
 
                 <motion.div
                   whileHover={{ scale: 1.05, x: -2, y: -2 }}
@@ -142,9 +145,25 @@ export default function Home() {
                 >
                   <Link
                     href="/open-position"
-                    className="inline-block px-8 py-4 text-lg font-bold text-[#C1FF72] bg-[#1800AD] border-4 border-[#C1FF72] rounded-xl shadow-[6px_6px_0_0_#000000] transition-all hover:shadow-[8px_8px_0_0_#000000]"
+                    className="inline-block px-8 py-4 text-lg font-bold text-[#1800AD] bg-[#C1FF72]/80 border-4 border-[#1800AD] rounded-xl shadow-[6px_6px_0_0_#000000] transition-all hover:shadow-[8px_8px_0_0_#000000]"
                   >
                     View Positions
+                  </Link>
+                </motion.div>
+
+
+
+
+
+                <motion.div
+                  whileHover={{ scale: 1.05, x: -2, y: -2 }}
+                  whileTap={{ scale: 0.95, x: 2, y: 2 }}
+                >
+                  <Link
+                    href="/leaderboard"
+                    className="inline-block px-8 py-4 text-lg font-bold text-[#1800AD] bg-[#C1FF72]/80 border-4 border-[#1800AD] rounded-xl shadow-[6px_6px_0_0_#000000] transition-all hover:shadow-[8px_8px_0_0_#000000]"
+                  >
+                    🏆 Leaderboard
                   </Link>
                 </motion.div>
               </motion.div>

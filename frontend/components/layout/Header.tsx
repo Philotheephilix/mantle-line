@@ -53,6 +53,19 @@ export function Header({ showStatus, statusText }: HeaderProps) {
             </div>
           </Link>
 
+          {/* Navigation */}
+          <nav className="hidden sm:flex items-center gap-4">
+            <Link href="/predict" className="text-sm font-bold text-white/80 hover:text-[#C1FF72] transition-colors">
+              Play
+            </Link>
+            <Link href="/leaderboard" className="text-sm font-bold text-white/80 hover:text-[#C1FF72] transition-colors">
+              Leaderboard
+            </Link>
+            <Link href="/open-position" className="text-sm font-bold text-white/80 hover:text-[#C1FF72] transition-colors">
+              Positions
+            </Link>
+          </nav>
+
           {/* Right side */}
           <div className="flex items-center gap-2 sm:gap-3">
             <ConnectWalletButton />
