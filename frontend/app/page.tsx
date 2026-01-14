@@ -60,10 +60,10 @@ export default function Home() {
         {/* Content overlay */}
         <div className="relative z-10 flex-1">
           {/* Hero Section */}
-          <section className="flex min-h-[70vh] flex-row items-center justify-center px-14 py-12 text-start">
+          <section className="flex min-h-[70vh] flex-col md:flex-row items-center justify-center px-4 sm:px-8 md:px-14 py-8 md:py-12 text-start gap-8 md:gap-0">
 
             <motion.div
-              className=""
+              className="w-full md:w-auto flex justify-center md:justify-start"
               animate={{
                 y: [-10, 10, -10],
               }}
@@ -78,13 +78,13 @@ export default function Home() {
                 alt="Hero Image"
                 width={256}
                 height={161}
-                className="w-[620px]  h-[202px] object-contain filter hue-rotate-40 brightness-150 contrast-120"
+                className="w-full max-w-[320px] sm:max-w-[480px] md:w-[620px] h-auto md:h-[202px] object-contain filter hue-rotate-40 brightness-150 contrast-120"
               />
             </motion.div>
 
 
             <motion.div
-              className="max-w-3xl space-y-6"
+              className="max-w-3xl space-y-4 md:space-y-6 w-full md:w-auto"
               variants={containerVariants}
               initial="hidden"
               animate="visible"
@@ -94,25 +94,17 @@ export default function Home() {
 
               {/* Floating Logo */}
               <motion.div
-                className="flex gap-10 mb-8"
-              // animate={{
-              //   y: [-10, 10, -10],
-              // }}
-              // transition={{
-              //   duration: 3,
-              //   repeat: Infinity,
-              //   ease: [0.4, 0, 0.6, 1],
-              // }}
+                className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6 md:gap-10 mb-6 md:mb-8"
               >
                 <Image
                   src="/logo.png"
                   alt="Resolv Logo"
                   width={80}
                   height={80}
-                  className="rounded-xl drop-shadow-[0_0_30px_#C1FF72]"
+                  className="rounded-xl drop-shadow-[0_0_30px_#C1FF72] w-16 h-16 sm:w-20 sm:h-20 md:w-[80px] md:h-[80px]"
                 />
                 <motion.h1
-                  className="text-6xl font-bold font-venite leading-tight tracking-[0.3em] text-[#C1FF72] drop-shadow-lg md:text-6xl"
+                  className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold font-venite leading-tight tracking-[0.15em] sm:tracking-[0.2em] md:tracking-[0.3em] text-[#C1FF72] drop-shadow-lg text-center sm:text-left"
                   variants={itemVariants}
                   style={{ textShadow: '4px 4px 0 #1800AD, -2px -2px 0 #0a0014' }}
                 >
@@ -120,14 +112,14 @@ export default function Home() {
                 </motion.h1>
               </motion.div>
               <motion.p
-                className="mt-10 text-2xl font-bold text-white drop-shadow-md md:text-2xl"
+                className="mt-6 md:mt-10 text-lg sm:text-xl md:text-2xl font-bold text-white drop-shadow-md text-center md:text-left"
                 variants={itemVariants}
               >
                 We&apos;ve invented a new way to trade futures. <br /> <span className="text-[#C1FF72]">Draw your futures.</span>
               </motion.p>
 
               <motion.p
-                className="ttext-md leading-relaxed text-white/80"
+                className="text-sm sm:text-base md:text-md leading-relaxed text-white/80 text-center md:text-left"
                 variants={itemVariants}
               >
                 A trading game where <strong className="text-[#C1FF72]">futures trades are expressed as drawings</strong>, not orders.
@@ -135,17 +127,18 @@ export default function Home() {
               </motion.p>
 
               <motion.div
-                className="flex flex-col items-center justify-start gap-4 pt-2 sm:flex-row"
+                className="flex flex-col items-center justify-center md:justify-start gap-3 sm:gap-4 pt-2 sm:flex-row w-full md:w-auto"
                 variants={itemVariants}
               >
 
                 <motion.div
                   whileHover={{ scale: 1.05, x: -2, y: -2 }}
                   whileTap={{ scale: 0.95, x: 2, y: 2 }}
+                  className="w-full sm:w-auto"
                 >
                   <Link
                     href="/predict"
-                    className="inline-block px-8 py-4 text-lg font-bold text-[#C1FF72] bg-[#1800AD] border-4 border-[#C1FF72] rounded-xl shadow-[6px_6px_0_0_#000000] transition-all hover:shadow-[8px_8px_0_0_#000000]"
+                    className="inline-block w-full sm:w-auto text-center px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg font-bold text-[#C1FF72] bg-[#1800AD] border-4 border-[#C1FF72] rounded-xl shadow-[6px_6px_0_0_#000000] transition-all hover:shadow-[8px_8px_0_0_#000000]"
                   >
                     Play Now
                   </Link>
@@ -155,10 +148,11 @@ export default function Home() {
                 <motion.div
                   whileHover={{ scale: 1.05, x: -2, y: -2 }}
                   whileTap={{ scale: 0.95, x: 2, y: 2 }}
+                  className="w-full sm:w-auto"
                 >
                   <Link
                     href="/open-position"
-                    className="inline-block px-8 py-4 text-lg font-bold text-[#1800AD] bg-[#C1FF72]/80 border-4 border-[#1800AD] rounded-xl shadow-[6px_6px_0_0_#000000] transition-all hover:shadow-[8px_8px_0_0_#000000]"
+                    className="inline-block w-full sm:w-auto text-center px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg font-bold text-[#1800AD] bg-[#C1FF72]/80 border-4 border-[#1800AD] rounded-xl shadow-[6px_6px_0_0_#000000] transition-all hover:shadow-[8px_8px_0_0_#000000]"
                   >
                     View Positions
                   </Link>
@@ -171,10 +165,11 @@ export default function Home() {
                 <motion.div
                   whileHover={{ scale: 1.05, x: -2, y: -2 }}
                   whileTap={{ scale: 0.95, x: 2, y: 2 }}
+                  className="w-full sm:w-auto"
                 >
                   <Link
                     href="/leaderboard"
-                    className="inline-block px-8 py-4 text-lg font-bold text-[#1800AD] bg-[#C1FF72]/80 border-4 border-[#1800AD] rounded-xl shadow-[6px_6px_0_0_#000000] transition-all hover:shadow-[8px_8px_0_0_#000000]"
+                    className="inline-block w-full sm:w-auto text-center px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg font-bold text-[#1800AD] bg-[#C1FF72]/80 border-4 border-[#1800AD] rounded-xl shadow-[6px_6px_0_0_#000000] transition-all hover:shadow-[8px_8px_0_0_#000000]"
                   >
                     🏆 Leaderboard
                   </Link>
@@ -184,7 +179,7 @@ export default function Home() {
           </section>
 
           {/* How It Works Section */}
-          <section className="relative bg-[#0a0014]/80 backdrop-blur-xl py-24 px-4 border-y-4 border-[#C1FF72]">
+          <section className="relative bg-[#0a0014]/80 backdrop-blur-xl py-12 sm:py-16 md:py-24 px-4 border-y-4 border-[#C1FF72]">
             <motion.div
               className="mx-auto max-w-6xl"
               initial={{ opacity: 0 }}
@@ -193,7 +188,7 @@ export default function Home() {
               transition={{ duration: 0.6 }}
             >
               <motion.h2
-                className="text-center font-venite text-4xl font-bold text-[#C1FF72] md:text-6xl mb-12"
+                className="text-center font-venite text-2xl sm:text-3xl md:text-4xl lg:text-6xl font-bold text-[#C1FF72] mb-8 sm:mb-10 md:mb-12 px-4"
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
@@ -225,7 +220,7 @@ export default function Home() {
                 ].map((item, i) => (
                   <motion.div
                     key={item.num}
-                    className="relative p-8 bg-[#1800AD]/60 border-4 border-[#C1FF72] rounded-2xl shadow-[6px_6px_0_0_#C1FF72]"
+                    className="relative p-6 sm:p-8 bg-[#1800AD]/60 border-4 border-[#C1FF72] rounded-2xl shadow-[6px_6px_0_0_#C1FF72]"
                     initial={{ opacity: 0, y: 30 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
@@ -238,10 +233,10 @@ export default function Home() {
                     }}
                   >
                     <div className="flex items-center gap-3 mb-4">
-                      <span className="text-7xl">{item.emoji}</span>
+                      <span className="text-5xl sm:text-6xl md:text-7xl">{item.emoji}</span>
                     </div>
-                    <h3 className="mb-4 text-xl font-bold text-[#C1FF72]">{item.title}</h3>
-                    <p className="text-white/80">
+                    <h3 className="mb-3 sm:mb-4 text-lg sm:text-xl font-bold text-[#C1FF72]">{item.title}</h3>
+                    <p className="text-sm sm:text-base text-white/80">
                       {item.desc}
                     </p>
                   </motion.div>
@@ -251,7 +246,7 @@ export default function Home() {
           </section>
 
           {/* CTA Section */}
-          <section className="relative bg-[#1800AD]/60 backdrop-blur-xl py-24 px-4">
+          <section className="relative bg-[#1800AD]/60 backdrop-blur-xl py-12 sm:py-16 md:py-24 px-4">
             <motion.div
               className="mx-auto max-w-3xl text-center"
               initial={{ opacity: 0, y: 30 }}
@@ -259,21 +254,22 @@ export default function Home() {
               viewport={{ once: true }}
             >
               <motion.h2
-                className="mb-8 text-4xl font-venite font-bold text-[#C1FF72] md:text-5xl"
+                className="mb-6 sm:mb-8 text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-venite font-bold text-[#C1FF72] px-4"
                 style={{ textShadow: '3px 3px 0 #0a0014' }}
               >
                 Ready to trade convictions?
               </motion.h2>
-              <p className="mb-12 text-xl text-white/80">
+              <p className="mb-8 sm:mb-12 text-base sm:text-lg md:text-xl text-white/80 px-4">
                 Draw your prediction curve and turn your market intuition into trading decisions.
               </p>
               <motion.div
                 whileHover={{ scale: 1.05, x: -3, y: -3 }}
                 whileTap={{ scale: 0.95, x: 3, y: 3 }}
+                className="px-4"
               >
                 <Link
                   href="/predict"
-                  className="inline-block px-12 py-5 text-xl font-bold text-[#1800AD] bg-[#C1FF72] border-4 border-[#0a0014] rounded-xl shadow-[8px_8px_0_0_#0a0014] transition-all hover:shadow-[10px_10px_0_0_#0a0014]"
+                  className="inline-block px-8 sm:px-12 py-4 sm:py-5 text-lg sm:text-xl font-bold text-[#1800AD] bg-[#C1FF72] border-4 border-[#0a0014] rounded-xl shadow-[8px_8px_0_0_#0a0014] transition-all hover:shadow-[10px_10px_0_0_#0a0014]"
                 >
                   Play Now 🚀
                 </Link>
