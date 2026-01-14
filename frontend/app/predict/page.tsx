@@ -2,15 +2,25 @@
 
 import { useState } from 'react';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { useAccount, useBalance } from 'wagmi';
+import { mantleSepoliaChain } from '@/lib/blockchain/wagmi';
 import { TradingChart } from '@/components/chart/TradingChart';
 import { PatternDrawingBox } from '@/components/chart/PatternDrawingBox';
 import { usePredictionDrawing } from '@/hooks/usePredictionDrawing';
 import { usePriceData } from '@/hooks/usePriceData';
+import { samplePredictionPoints } from '@/lib/prediction/samplePredictionPoints';
 
 export const dynamic = 'force-dynamic';
 
 // Props are intentionally not used - they're passed by Next.js but we don't need them
 export default function PredictPage(_props: { params?: unknown; searchParams?: unknown }) {
+  const { address, isConnected } = useAccount();
+  const { data: mntBalance, isLoading: isBalanceLoading } = useBalance({
+    address,
+    chainId: mantleSepoliaChain.id,
+    watch: true,
+  });
+
   const {
     isDrawing,
     currentPoints,
@@ -46,7 +56,7 @@ export default function PredictPage(_props: { params?: unknown; searchParams?: u
     const currentTime = priceData[priceData.length - 1].time;
 
     const canvasWidth = 600;
-    const canvasHeight = 200;
+    const canvasHeight = 300;
 
     const priceRange = currentPrice * 0.05;
     const minPrice = currentPrice - priceRange;
@@ -56,15 +66,8 @@ export default function PredictPage(_props: { params?: unknown; searchParams?: u
     const nowInSeconds = Math.floor(Date.now() / 1000);
     const futureStartTime = nowInSeconds + (offsetMinutes * 60);
 
-    const maxPoints = 15;
-    const step = Math.max(1, Math.floor(points.length / maxPoints));
-    const sampledPoints = [];
-    for (let i = 0; i < points.length; i += step) {
-      sampledPoints.push(points[i]);
-    }
-    if (sampledPoints[sampledPoints.length - 1] !== points[points.length - 1]) {
-      sampledPoints.push(points[points.length - 1]);
-    }
+    const sampledPoints = samplePredictionPoints(points, 60);
+    console.log('sampled prediction canvas points (<= 60):', sampledPoints);
 
     const predictionPoints = sampledPoints.map((point) => {
       const normalizedX = point.x / canvasWidth;
@@ -290,7 +293,13 @@ export default function PredictPage(_props: { params?: unknown; searchParams?: u
                   className="w-9 h-9 sm:w-10 sm:h-10"
                   style={{ imageRendering: 'pixelated' }}
                 />
-                <span className="font-mono text-sm sm:text-base text-gray-200 tracking-tight">0.000 SOL</span>
+                <span className="font-mono text-sm sm:text-base text-gray-200 tracking-tight">
+                  {isConnected
+                    ? isBalanceLoading
+                      ? 'Loading...'
+                      : `${Number(mntBalance?.formatted ?? 0).toFixed(3)} ${mntBalance?.symbol ?? 'MNT'}`
+                    : '0.000 MNT'}
+                </span>
               </div>
             </div>
 
