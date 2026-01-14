@@ -169,3 +169,8 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #A8E65F;
 }
+
+
+button {
+  cursor: pointer;
+}

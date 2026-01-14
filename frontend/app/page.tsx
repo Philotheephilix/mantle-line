@@ -28,7 +28,7 @@ const itemVariants = {
 
 export default function Home() {
   return (
-    <NoiseEffect opacity={0.5} className="min-h-screen flex flex-col">
+    <NoiseEffect opacity={0.4} className="min-h-screen flex flex-col">
       <div className="relative flex flex-col min-h-screen">
         {/* Animated background */}
         <div className="fixed inset-0 z-0">
@@ -63,7 +63,7 @@ export default function Home() {
           <section className="flex min-h-[70vh] flex-col md:flex-row items-center justify-center px-4 sm:px-8 md:px-14 py-8 md:py-12 text-start gap-8 md:gap-0">
 
             <motion.div
-              className="w-full md:w-auto flex justify-center md:justify-start"
+              className="w-full z-0 md:w-auto flex justify-center md:justify-start"
               animate={{
                 y: [-10, 10, -10],
               }}
@@ -84,7 +84,7 @@ export default function Home() {
 
 
             <motion.div
-              className="max-w-3xl space-y-4 md:space-y-6 w-full md:w-auto"
+              className="max-w-3xl z-10 space-y-4 md:space-y-6 w-full md:w-auto"
               variants={containerVariants}
               initial="hidden"
               animate="visible"
