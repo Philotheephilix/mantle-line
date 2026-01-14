@@ -145,6 +145,88 @@ contract LineFutures {
     }
 
     /**
+     * @notice Batch open 1-5 positions with equal ETH split and staggered timestamps
+     * @param _leverage Leverage multiplier (1-2500) applied to all positions
+     * @param _predictionCommitmentIds Array of 1-5 EigenDA commitment IDs for predictions
+     * @return positionIds Array of position IDs for the newly created positions
+     * @dev Each position receives an equal share of msg.value (msg.value / count)
+     * @dev Positions are staggered by 60 seconds: position i opens at block.timestamp + i * 60
+     */
+    function batchOpenPositions(
+        uint16 _leverage,
+        string[] memory _predictionCommitmentIds
+    ) external payable whenNotPaused returns (uint256[] memory positionIds) {
+        uint256 count = _predictionCommitmentIds.length;
+        
+        // Validate position count (1-5)
+        require(count >= 1 && count <= 5, "LineFutures: invalid position count");
+        
+        // Validate leverage
+        require(_leverage >= 1 && _leverage <= MAX_LEVERAGE, "LineFutures: invalid leverage");
+        
+        // Validate total ETH amount
+        require(msg.value >= MIN_AMOUNT * count, "LineFutures: total amount below minimum");
+        
+        // Calculate amount per position (equal split)
+        uint256 amountPerPosition = msg.value / count;
+        require(amountPerPosition >= MIN_AMOUNT, "LineFutures: amount per position below minimum");
+        
+        // Refund remainder if any (to avoid dust stuck in contract)
+        uint256 remainder = msg.value % count;
+        if (remainder > 0) {
+            (bool success, ) = payable(msg.sender).call{value: remainder}("");
+            require(success, "LineFutures: remainder refund failed");
+        }
+        
+        // Initialize return array
+        positionIds = new uint256[](count);
+        
+        // Create positions with staggered timestamps
+        for (uint256 i = 0; i < count; i++) {
+            // Validate commitment ID is not empty
+            require(
+                bytes(_predictionCommitmentIds[i]).length > 0,
+                "LineFutures: empty commitment ID"
+            );
+            
+            // Calculate staggered timestamp: block.timestamp + i * 60 seconds
+            uint256 openTimestamp = block.timestamp + (i * POSITION_DURATION);
+            
+            // Create new position
+            Position memory newPosition = Position({
+                user: msg.sender,
+                amount: amountPerPosition,
+                leverage: _leverage,
+                openTimestamp: openTimestamp,
+                predictionCommitmentId: _predictionCommitmentIds[i],
+                isOpen: true,
+                pnl: 0,
+                actualPriceCommitmentId: "",
+                closeTimestamp: 0
+            });
+            
+            // Store position
+            uint256 positionId = positionCounter;
+            positions[positionId] = newPosition;
+            userPositions[msg.sender].push(positionId);
+            positionIds[i] = positionId;
+            positionCounter++;
+            
+            // Emit event for each position
+            emit PositionOpened(
+                positionId,
+                msg.sender,
+                amountPerPosition,
+                _leverage,
+                openTimestamp,
+                _predictionCommitmentIds[i]
+            );
+        }
+        
+        return positionIds;
+    }
+
+    /**
      * @notice Close a position (called by PnL server)
      * @param _positionId Position ID to close
      * @param _pnl Calculated PNL in wei (can be negative)
