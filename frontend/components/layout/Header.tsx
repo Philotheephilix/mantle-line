@@ -61,6 +61,9 @@ export function Header({ showStatus, statusText }: HeaderProps) {
             <Link href="/leaderboard" className="border-b-2 border-[#C1FF72] text-sm font-bold text-white/80 hover:text-[#C1FF72] transition-colors">
               Leaderboard
             </Link>
+            <Link href="/history" className="border-b-2 border-[#C1FF72] text-sm font-bold text-white/80 hover:text-[#C1FF72] transition-colors">
+              History
+            </Link>
           </nav>
 
           {/* Right side */}
