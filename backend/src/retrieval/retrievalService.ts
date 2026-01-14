@@ -226,15 +226,37 @@ export class RetrievalService {
       }
 
       // Retrieve next minute window
+      // Windows are stored at the END of the minute they represent
+      // e.g., window for 16:40:00-16:41:00 is stored at 16:41:00
+      // So if we're still in minute 16:40, that window hasn't been stored yet
+      const now = Math.floor(Date.now() / 1000);
+      const currentMinute = Math.floor(now / 60) * 60;
+      const nextMinuteEnd = nextMinuteStart + 60; // When the next window will be stored
+      const isNextMinuteWindowStored = currentMinute >= nextMinuteEnd;
+      
+      if (!isNextMinuteWindowStored) {
+        logger.warn('Next minute window not yet stored (window stored at end of minute)', { 
+          nextMinuteStart,
+          nextMinuteEnd,
+          currentMinute,
+          openTimestamp,
+          now,
+          secondsUntilStored: nextMinuteEnd - now,
+          note: 'Window for next minute is stored at the end of that minute. Need to wait for window to be stored.'
+        });
+        // Next minute window hasn't been stored yet - return null so caller can retry
+        return null;
+      }
+
       const nextWindow = await this.getWindow(nextMinuteStart);
       if (!nextWindow) {
-        logger.warn('Next minute window not found', { 
+        logger.warn('Next minute window not found in storage', { 
           nextMinuteStart,
           openTimestamp,
-          note: 'Position may have closed before next minute boundary was stored'
+          currentMinute,
+          note: 'Window should exist but was not found in contract storage'
         });
-        // If next window doesn't exist yet, we can't complete the position window
-        // This could happen if position closes very quickly
+        // Window should exist but doesn't - might be a data issue
         return null;
       }
 

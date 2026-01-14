@@ -244,7 +244,25 @@ export class PositionService {
       const actualPriceWindow = await this.retrievalService.getWindowForPosition(openTimestamp);
       
       if (!actualPriceWindow) {
-        throw new Error('Actual price data not found for position window');
+        const now = Math.floor(Date.now() / 1000);
+        const elapsed = now - openTimestamp;
+        const currentMinuteStart = Math.floor(openTimestamp / 60) * 60;
+        const nextMinuteStart = currentMinuteStart + 60;
+        const currentMinute = Math.floor(now / 60) * 60;
+        
+        logger.error('Actual price data not found for position window', {
+          positionId,
+          openTimestamp,
+          now,
+          elapsed,
+          currentMinuteStart,
+          nextMinuteStart,
+          currentMinute,
+          nextMinuteExists: nextMinuteStart <= currentMinute,
+          note: 'This may happen if position closes before next minute window is stored. Will retry.'
+        });
+        
+        throw new Error(`Actual price data not found for position window. Position opened at ${openTimestamp}, current time ${now}, elapsed ${elapsed}s. Next minute window (${nextMinuteStart}) ${nextMinuteStart > currentMinute ? 'not yet stored' : 'should exist but not found'}.`);
       }
 
       const actualPrices = actualPriceWindow.prices;
