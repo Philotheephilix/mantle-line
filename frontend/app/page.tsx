@@ -55,11 +55,32 @@ export default function Home() {
           <Header />
         </div>
 
+
+
         {/* Content overlay */}
         <div className="relative z-10 flex-1">
           {/* Hero Section */}
-          <section className="flex min-h-[70vh] flex-col items-center justify-start px-4 py-20 text-start">
+          <section className="flex min-h-[70vh] flex-row items-center justify-center px-14 py-12 text-start">
 
+            <motion.div
+              className=""
+              animate={{
+                y: [-10, 10, -10],
+              }}
+              transition={{
+                duration: 3,
+                repeat: Infinity,
+                ease: [0.4, 0, 0.6, 1],
+              }}
+            >
+              <Image
+                src="https://i.giphy.com/aTjXudsKhB35df6RFf.webp"
+                alt="Hero Image"
+                width={256}
+                height={161}
+                className="w-[620px]  h-[202px] object-contain filter hue-rotate-40 brightness-150 contrast-120"
+              />
+            </motion.div>
 
 
             <motion.div
@@ -68,17 +89,20 @@ export default function Home() {
               initial="hidden"
               animate="visible"
             >
+
+
+
               {/* Floating Logo */}
               <motion.div
-                className="flex justify-start gap-10 mb-8"
-                animate={{
-                  y: [-10, 10, -10],
-                }}
-                transition={{
-                  duration: 3,
-                  repeat: Infinity,
-                  ease: [0.4, 0, 0.6, 1],
-                }}
+                className="flex gap-10 mb-8"
+              // animate={{
+              //   y: [-10, 10, -10],
+              // }}
+              // transition={{
+              //   duration: 3,
+              //   repeat: Infinity,
+              //   ease: [0.4, 0, 0.6, 1],
+              // }}
               >
                 <Image
                   src="/logo.png"
@@ -94,11 +118,7 @@ export default function Home() {
                 >
                   RESOLV
                 </motion.h1>
-
               </motion.div>
-
-
-
               <motion.p
                 className="mt-10 text-2xl font-bold text-white drop-shadow-md md:text-2xl"
                 variants={itemVariants}
@@ -113,13 +133,6 @@ export default function Home() {
                 A trading game where <strong className="text-[#C1FF72]">futures trades are expressed as drawings</strong>, not orders.
                 Turn your market intuition into entertainment finance.
               </motion.p>
-              <Image
-                src="https://i.giphy.com/aTjXudsKhB35df6RFf.webp"
-                alt="Hero Image"
-                width={256}
-                height={161}
-                className="w-[320px] -mb-5 -mt-14 h-[202px] object-contain filter hue-rotate-40 brightness-150 contrast-120"
-              />
 
               <motion.div
                 className="flex flex-col items-center justify-start gap-4 pt-2 sm:flex-row"
@@ -274,6 +287,6 @@ export default function Home() {
           <Footer />
         </div>
       </div>
-    </NoiseEffect>
+    </NoiseEffect >
   );
 }
