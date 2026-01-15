@@ -22,7 +22,8 @@ RUN rm -f /usr/bin/docker /usr/local/bin/docker && \
     mv /tmp/docker/docker /usr/local/bin/docker && \
     chmod +x /usr/local/bin/docker && \
     rm -rf /tmp/docker && \
-    /usr/local/bin/docker --version
+    ln -sf /usr/local/bin/docker /usr/bin/docker && \
+    docker --version
 
 # Install pnpm globally
 RUN npm install -g pnpm
