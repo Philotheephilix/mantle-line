@@ -37,3 +37,8 @@ Thumbs.db
 .env
 .env.local
 .env.*.local
+
+backend/positions.db
+backend/positions.db-shm
+backend/positions.db-wal
+.pnpm-store/
