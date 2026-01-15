@@ -27,7 +27,7 @@ const mantleSepoliaChain = defineChain({
   blockExplorers: {
     default: {
       name: 'Mantle Sepolia Explorer',
-      url: 'https://explorer.sepolia.mantle.xyz',
+      url: 'https://sepolia.mantlescan.xyz/',
     },
   },
   testnet: true,

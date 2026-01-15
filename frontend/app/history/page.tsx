@@ -479,7 +479,7 @@ export default function HistoryPage() {
                             <div className="col-span-2 flex items-center justify-center">
                               {position.txHash ? (
                                 <a
-                                  href={`https://explorer.mantle.xyz/tx/${position.txHash}`}
+                                  href={`https://sepolia.mantlescan.xyz/tx/${position.txHash}`}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="text-[#C1FF72] hover:text-[#C1FF72]/70 text-sm font-mono underline"
