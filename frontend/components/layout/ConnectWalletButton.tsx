@@ -12,7 +12,8 @@ export function ConnectWalletButton() {
   const { ready, authenticated, login, logout } = usePrivy();
   const { wallets } = useWallets();
 
-  const embeddedWallet = wallets[0];
+  // Ensure we use the Privy embedded wallet, not browser extensions
+  const embeddedWallet = wallets.find((w) => w.walletClientType === 'privy');
 
   const address = embeddedWallet?.address ?? '';
   const connected = ready && authenticated && !!embeddedWallet && !!address;

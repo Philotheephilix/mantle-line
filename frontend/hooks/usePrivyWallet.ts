@@ -22,8 +22,8 @@ export function usePrivyWallet(): UsePrivyWalletResult {
 
   const embeddedWallet = useMemo(
     () =>
-      // Prefer the first available wallet (embedded or external)
-      (wallets[0] ?? null),
+      // Use the Privy embedded wallet (not external extensions like MetaMask/Brave)
+      wallets.find((w) => w.walletClientType === 'privy') ?? null,
     [wallets],
   );
 

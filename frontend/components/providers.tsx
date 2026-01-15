@@ -48,8 +48,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
       config={{
         embeddedWallets: {
           createOnLogin: 'all-users',
-          // Auto-approve transactions (development only - remove in production!)
-          noPromptOnSignature: process.env.NODE_ENV === 'development',
+          noPromptOnSignature: true,
+          showWalletUIs: false,
         },
         defaultChain: mantleSepoliaChain,
         supportedChains: [mantleSepoliaChain],
