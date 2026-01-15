@@ -69,9 +69,9 @@ export function BottomControls({
                     <Image
                       src="/wallet.png"
                       alt="Wallet"
-                      width={40}
+                      width={60}
                       height={40}
-                      className="w-6 h-6 sm:w-9 sm:h-9 md:w-10 md:h-10 shrink-0"
+                      className="w-6 aspect-video sm:w-9 md:w-15"
                       style={{ imageRendering: 'pixelated' }}
                     />
                     <span className="font-mono text-xs sm:text-sm md:text-base text-gray-200 tracking-tight truncate">

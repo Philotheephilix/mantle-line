@@ -63,36 +63,11 @@ export default function Home() {
           <section className="flex min-h-[70vh] flex-col md:flex-row items-center justify-center px-4 sm:px-8 md:px-14 py-8 md:py-12 text-start gap-8 md:gap-0">
 
             <motion.div
-              className="w-full z-0 md:w-auto flex justify-center md:justify-start"
-              animate={{
-                y: [-10, 10, -10],
-              }}
-              transition={{
-                duration: 3,
-                repeat: Infinity,
-                ease: [0.4, 0, 0.6, 1],
-              }}
-            >
-              <Image
-                src="https://i.giphy.com/aTjXudsKhB35df6RFf.webp"
-                alt="Hero Image"
-                width={256}
-                height={161}
-                className="w-full max-w-[320px] sm:max-w-[480px] md:w-[620px] h-auto md:h-[202px] object-contain filter hue-rotate-40 brightness-150 contrast-120"
-              />
-            </motion.div>
-
-
-            <motion.div
               className="max-w-3xl z-10 space-y-4 md:space-y-6 w-full md:w-auto"
               variants={containerVariants}
               initial="hidden"
               animate="visible"
             >
-
-
-
-              {/* Floating Logo */}
               <motion.div
                 className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6 md:gap-8 mb-6 md:mb-8"
               >
@@ -151,23 +126,6 @@ export default function Home() {
                   className="w-full sm:w-auto"
                 >
                   <Link
-                    href="/open-position"
-                    className="inline-block w-full sm:w-auto text-center px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg font-bold text-[#1800AD] bg-[#C1FF72]/80 border-4 border-[#1800AD] rounded-xl shadow-[6px_6px_0_0_#000000] transition-all hover:shadow-[8px_8px_0_0_#000000]"
-                  >
-                    View Positions
-                  </Link>
-                </motion.div>
-
-
-
-
-
-                <motion.div
-                  whileHover={{ scale: 1.05, x: -2, y: -2 }}
-                  whileTap={{ scale: 0.95, x: 2, y: 2 }}
-                  className="w-full sm:w-auto"
-                >
-                  <Link
                     href="/leaderboard"
                     className="inline-block w-full sm:w-auto text-center px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg font-bold text-[#1800AD] bg-[#C1FF72]/80 border-4 border-[#1800AD] rounded-xl shadow-[6px_6px_0_0_#000000] transition-all hover:shadow-[8px_8px_0_0_#000000]"
                   >
@@ -175,6 +133,26 @@ export default function Home() {
                   </Link>
                 </motion.div>
               </motion.div>
+            </motion.div>
+
+            <motion.div
+              className="w-full z-0 md:w-auto flex justify-center md:justify-start"
+              animate={{
+                y: [-10, 10, -10],
+              }}
+              transition={{
+                duration: 3,
+                repeat: Infinity,
+                ease: [0.4, 0, 0.6, 1],
+              }}
+            >
+              <Image
+                src="https://i.giphy.com/aTjXudsKhB35df6RFf.webp"
+                alt="Hero Image"
+                width={256}
+                height={161}
+                className="w-full max-w-[320px] sm:max-w-[480px] md:w-[620px] h-auto md:h-[202px] object-contain filter hue-rotate-40 brightness-150 contrast-120"
+              />
             </motion.div>
           </section>
 

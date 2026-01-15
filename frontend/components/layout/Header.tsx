@@ -18,7 +18,7 @@ export function Header({ showStatus, statusText }: HeaderProps) {
       animate={{ y: 0 }}
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
     >
-      <div className="px-4 py-3 sm:py-4 max-w-6xl mx-auto">
+      <div className="px-4 py-3 sm:py-4 max-w-7xl mx-auto">
         <div className="flex items-center justify-between gap-3">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-3 group">
