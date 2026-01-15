@@ -5,23 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import { SlotMachineLeverButton } from '@/components/ui/SlotMachineLever';
 
-const rainbowStops = ['#ff0000', '#ff9900', '#ffff00', '#33ff00', '#0099ff', '#6633ff'];
-
-const createStrokeGradient = (ctx: CanvasRenderingContext2D, x1: number, y1: number, x2: number, y2: number) => {
-  const gradient = ctx.createLinearGradient(x1, y1, x2, y2);
-  rainbowStops.forEach((color, index) => {
-    gradient.addColorStop(index / (rainbowStops.length - 1), color);
-  });
-  return gradient;
-};
-
-const createPointGradient = (ctx: CanvasRenderingContext2D, x: number, y: number) => {
-  const gradient = ctx.createRadialGradient(x, y, 0, x, y, 12);
-  rainbowStops.forEach((color, index) => {
-    gradient.addColorStop(index / (rainbowStops.length - 1), color);
-  });
-  return gradient;
-};
+const NEON_COLOR = '#C1FF72';
 
 interface PatternPoint {
   x: number;
@@ -73,9 +57,9 @@ export function PatternDrawingBox({
     if (!ctx || !canvas) return;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = createPointGradient(ctx, coords.x, coords.y);
-    ctx.shadowColor = '#ff66ff';
-    ctx.shadowBlur = 10;
+    ctx.fillStyle = NEON_COLOR;
+    ctx.shadowColor = NEON_COLOR;
+    ctx.shadowBlur = 20;
     ctx.beginPath();
     ctx.arc(coords.x, coords.y, 4, 0, 2 * Math.PI);
     ctx.fill();
@@ -98,13 +82,12 @@ export function PatternDrawingBox({
 
     if (points.length > 0) {
       const lastPoint = points[points.length - 1];
-      const gradient = createStrokeGradient(ctx, lastPoint.x, lastPoint.y, coords.x, coords.y);
-      ctx.strokeStyle = gradient;
+      ctx.strokeStyle = NEON_COLOR;
       ctx.lineWidth = 4;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
-      ctx.shadowColor = '#ff66ff';
-      ctx.shadowBlur = 10;
+      ctx.shadowColor = NEON_COLOR;
+      ctx.shadowBlur = 20;
       ctx.beginPath();
       ctx.moveTo(lastPoint.x, lastPoint.y);
       ctx.lineTo(coords.x, coords.y);
@@ -126,9 +109,9 @@ export function PatternDrawingBox({
     const endPoint = pointsToDraw[pointsToDraw.length - 1];
 
     if (pointsToDraw.length === 1) {
-      ctx.fillStyle = createPointGradient(ctx, startPoint.x, startPoint.y);
-      ctx.shadowColor = '#ff66ff';
-      ctx.shadowBlur = 10;
+      ctx.fillStyle = NEON_COLOR;
+      ctx.shadowColor = NEON_COLOR;
+      ctx.shadowBlur = 20;
       ctx.beginPath();
       ctx.arc(pointsToDraw[0].x, pointsToDraw[0].y, 4, 0, 2 * Math.PI);
       ctx.fill();
@@ -136,13 +119,12 @@ export function PatternDrawingBox({
     }
 
     // Draw path
-    const gradient = createStrokeGradient(ctx, startPoint.x, startPoint.y, endPoint.x, endPoint.y);
-    ctx.strokeStyle = gradient;
-    ctx.lineWidth = 4;
+    ctx.strokeStyle = NEON_COLOR;
+    ctx.lineWidth = 6;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    ctx.shadowColor = '#ff66ff';
-    ctx.shadowBlur = 10;
+    ctx.shadowColor = NEON_COLOR;
+    ctx.shadowBlur = 20;
 
     ctx.beginPath();
     ctx.moveTo(pointsToDraw[0].x, pointsToDraw[0].y);
@@ -279,6 +261,38 @@ export function PatternDrawingBox({
       }
     }
   };
+
+  // Initialize canvas dimensions to match display size
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const updateCanvasSize = () => {
+      const rect = canvas.getBoundingClientRect();
+      // Set internal canvas dimensions to match display size
+      // This prevents stretching when drawing
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+    };
+
+    // Use ResizeObserver for more reliable size detection
+    const resizeObserver = new ResizeObserver(() => {
+      // Use requestAnimationFrame to ensure layout has settled
+      requestAnimationFrame(updateCanvasSize);
+    });
+
+    resizeObserver.observe(canvas);
+
+    // Initial size update after a brief delay to ensure layout is ready
+    const timeoutId = setTimeout(() => {
+      updateCanvasSize();
+    }, 0);
+
+    return () => {
+      resizeObserver.disconnect();
+      clearTimeout(timeoutId);
+    };
+  }, []);
 
   // Cleanup animation on unmount
   useEffect(() => {

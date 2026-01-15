@@ -94,7 +94,7 @@ export default function Home() {
 
               {/* Floating Logo */}
               <motion.div
-                className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6 md:gap-10 mb-6 md:mb-8"
+                className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6 md:gap-8 mb-6 md:mb-8"
               >
                 <Image
                   src="/logo.png"
@@ -104,7 +104,7 @@ export default function Home() {
                   className="rounded-xl drop-shadow-[0_0_30px_#C1FF72] w-16 h-16 sm:w-20 sm:h-20 md:w-[80px] md:h-[80px]"
                 />
                 <motion.h1
-                  className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold font-venite leading-tight tracking-[0.15em] sm:tracking-[0.2em] md:tracking-[0.3em] text-[#C1FF72] drop-shadow-lg text-center sm:text-left"
+                  className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold font-venite leading-tight tracking-[0.2em] text-[#C1FF72] drop-shadow-lg text-center sm:text-left"
                   variants={itemVariants}
                   style={{ textShadow: '4px 4px 0 #1800AD, -2px -2px 0 #0a0014' }}
                 >
