@@ -2,10 +2,8 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAccount } from 'wagmi';
-import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { formatEther, parseEther } from 'ethers';
-import { Header, Footer } from '@/components/layout';
+import { Header, Footer, ConnectWalletButton } from '@/components/layout';
 import { NoiseEffect } from '@/components/ui/NoiseEffect';
 import { getLeaderboard, getUserStats, getLeaderboardStats } from '@/lib/api/leaderboard';
 import type { LeaderboardEntry, UserStats } from '@/types/leaderboard';
@@ -58,7 +56,8 @@ const getUsername = (address: string): string => {
 };
 
 export default function LeaderboardPage() {
-  const { address, isConnected } = useAccount();
+  const address = undefined as unknown as string | undefined;
+  const isConnected = false;
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
   const [sortBy, setSortBy] = useState<SortBy>('pnl');
   const [hoveredRank, setHoveredRank] = useState<number | null>(null);
@@ -646,7 +645,7 @@ export default function LeaderboardPage() {
                     </div>
                   </div>
                 </div>
-                <ConnectButton />
+                <ConnectWalletButton />
               </div>
             ) : (
               <div className="flex flex-col md:flex-row items-center justify-between gap-4">
@@ -657,7 +656,7 @@ export default function LeaderboardPage() {
                     <p className="text-white/60">Connect your wallet to see your position</p>
                   </div>
                 </div>
-                <ConnectButton />
+                <ConnectWalletButton />
               </div>
             )}
           </motion.div>

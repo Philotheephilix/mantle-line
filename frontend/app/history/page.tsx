@@ -2,13 +2,12 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAccount } from 'wagmi';
-import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { formatEther } from 'ethers';
 import { Header, Footer } from '@/components/layout';
 import { NoiseEffect } from '@/components/ui/NoiseEffect';
 import { getClosedPositions, getUserStats } from '@/lib/api/leaderboard';
 import type { LeaderboardEntry, UserStats } from '@/types/leaderboard';
+import { usePrivyWallet } from '@/hooks/usePrivyWallet';
 
 type SortBy = 'pnl' | 'timestamp';
 
@@ -32,7 +31,8 @@ const itemVariants = {
 };
 
 export default function HistoryPage() {
-  const { address, isConnected } = useAccount();
+  const { ready, authenticated, address, isWalletLoading, login } = usePrivyWallet();
+  const isConnected = ready && authenticated && !!address && !isWalletLoading;
   const [sortBy, setSortBy] = useState<SortBy>('timestamp');
   const [hoveredPosition, setHoveredPosition] = useState<number | null>(null);
   const [positions, setPositions] = useState<LeaderboardEntry[]>([]);
@@ -269,7 +269,29 @@ export default function HistoryPage() {
                     <p className="text-white/60">Connect your wallet to view your trade history</p>
                   </div>
                 </div>
-                <ConnectButton />
+                <motion.button
+                  onClick={login}
+                  type="button"
+                  className="relative group px-4 py-2.5 bg-[#C1FF72] border-3 border-[#0a0014] rounded-lg font-bold text-[#1800AD] uppercase tracking-wider text-sm shadow-[4px_4px_0_0_#0a0014] transition-all"
+                  whileHover={{
+                    x: -2,
+                    y: -2,
+                    boxShadow: '6px 6px 0 0 #0a0014',
+                  }}
+                  whileTap={{
+                    x: 2,
+                    y: 2,
+                    boxShadow: '2px 2px 0 0 #0a0014',
+                  }}
+                  style={{ imageRendering: 'pixelated' }}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="w-5 h-5 rounded border-2 border-[#1800AD] bg-[#1800AD] flex items-center justify-center">
+                      <div className="w-2 h-2 rounded-sm bg-[#C1FF72]" />
+                    </div>
+                    <span>Connect</span>
+                  </div>
+                </motion.button>
               </div>
             </motion.div>
           )}
@@ -522,7 +544,6 @@ export default function HistoryPage() {
                     </div>
                   </div>
                 </div>
-                <ConnectButton />
               </div>
             </motion.div>
           )}

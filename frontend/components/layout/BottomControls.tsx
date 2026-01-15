@@ -9,7 +9,7 @@ interface BottomControlsProps {
   selectedMinute: number | null;
   hasPoints: boolean;
   onClear: () => void;
-  mntBalance?: { formatted: string; symbol: string } | null;
+  mntBalance?: bigint | null;
   isBalanceLoading?: boolean;
   isConnected?: boolean;
   batchPnL?: number | null;
@@ -75,10 +75,8 @@ export function BottomControls({
                       style={{ imageRendering: 'pixelated' }}
                     />
                     <span className="font-mono text-xs sm:text-sm md:text-base text-gray-200 tracking-tight truncate">
-                      {isConnected
-                        ? isBalanceLoading
-                          ? '...'
-                          : `${Number(mntBalance?.formatted ?? 0).toFixed(2)}`
+                      {isConnected && mntBalance !== null
+                        ? `${Number((mntBalance ?? 0n) / 10_000_000_000_000_000n) / 100}`
                         : '0.00'}
                     </span>
                   </div>

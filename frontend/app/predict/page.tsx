@@ -2,9 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { BrowserProvider, Contract, parseEther, formatEther } from 'ethers';
-import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { useAccount, useBalance } from 'wagmi';
-import { mantleSepoliaChain } from '@/lib/blockchain/wagmi';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TradingChart } from '@/components/chart/TradingChart';
 import { PatternDrawingBox } from '@/components/chart/PatternDrawingBox';
@@ -17,6 +14,7 @@ import {
 import { Header, BottomControls } from '@/components/layout';
 import { NoiseEffect } from '@/components/ui/NoiseEffect';
 import SplashCursor from '@/components/ui/SplashCursor';
+import { usePrivyWallet } from '@/hooks/usePrivyWallet';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,11 +32,10 @@ const DEFAULT_FUTURES_CONTRACT_ADDRESS =
 
 // Props are intentionally not used - they're passed by Next.js but we don't need them
 export default function PredictPage(_props: { params?: unknown; searchParams?: unknown }) {
-  const { address, isConnected } = useAccount();
-  const { data: mntBalance, isLoading: isBalanceLoading } = useBalance({
-    address,
-    chainId: mantleSepoliaChain.id,
-  });
+  const { ready, authenticated, address, isWalletLoading, getSigner } = usePrivyWallet();
+  const isConnected = ready && authenticated && !!address && !isWalletLoading;
+  const [mntBalance, setMntBalance] = useState<bigint | null>(null);
+  const [isBalanceLoading, setIsBalanceLoading] = useState(false);
 
   const {
     isDrawing,
@@ -140,6 +137,35 @@ export default function PredictPage(_props: { params?: unknown; searchParams?: u
     };
   }, [positionIds]);
 
+  // Fetch MNT balance for the Privy wallet (once per address)
+  useEffect(() => {
+    const fetchBalance = async () => {
+      if (!isConnected || !address) {
+        return;
+      }
+      // If we already have a balance for this address, don't refetch
+      if (mntBalance !== null) {
+        return;
+      }
+      setIsBalanceLoading(true);
+      try {
+        const signer = await getSigner();
+        const provider = signer?.provider as BrowserProvider | null;
+        if (!provider) {
+          return;
+        }
+        const balance = await provider.getBalance(address);
+        setMntBalance(balance);
+      } catch (err) {
+        console.error('Failed to fetch MNT balance for Privy wallet', err);
+      } finally {
+        setIsBalanceLoading(false);
+      }
+    };
+
+    fetchBalance();
+  }, [isConnected, address, getSigner, mntBalance]);
+
   const handleClear = () => {
     clearPrediction();
     setSelectedMinute(null);
@@ -194,7 +220,7 @@ export default function PredictPage(_props: { params?: unknown; searchParams?: u
 
     const commitmentIds: string[] = [];
 
-    if (!address) {
+    if (!isConnected || !address) {
       console.error('wallet not connected; cannot upload predictions or open position');
     } else {
       try {
@@ -235,13 +261,10 @@ export default function PredictPage(_props: { params?: unknown; searchParams?: u
 
         const positionsCount = Math.max(1, offsetMinutes);
 
-        const ethereum = (window as unknown as { ethereum?: unknown }).ethereum;
-        if (!ethereum) {
-          throw new Error('No injected wallet found. Please install MetaMask.');
+        const signer = await getSigner();
+        if (!signer) {
+          throw new Error('No Privy signer available. Please reconnect your wallet.');
         }
-
-        const provider = new BrowserProvider(ethereum as any);
-        const signer = await provider.getSigner();
 
         const contract = new Contract(
           DEFAULT_FUTURES_CONTRACT_ADDRESS,
