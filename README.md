@@ -1,4 +1,4 @@
-# Resolv - Draw Your Predictions, Trade the Future
+# Resolv.Fi - gamified perpetual futures protocol
 
 <div align="center">
 
