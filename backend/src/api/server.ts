@@ -635,7 +635,7 @@ export class APIServer {
         return;
       }
 
-      const address = req.params.address;
+      const address = Array.isArray(req.params.address) ? req.params.address[0] : req.params.address;
       if (!address || !/^0x[a-fA-F0-9]{40}$/.test(address)) {
         res.status(400).json({ error: 'Invalid Ethereum address' });
         return;

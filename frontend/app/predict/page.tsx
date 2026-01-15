@@ -28,7 +28,7 @@ const LINE_FUTURES_ABI = [
 
 const DEFAULT_FUTURES_CONTRACT_ADDRESS =
   process.env.NEXT_PUBLIC_FUTURES_CONTRACT_ADDRESS ||
-  '0xB57652f87ecc08c8B9d87025f9818818964f7916';
+  '0x30200d6273e6e08B08Bd9C8f3A1A8807265B7adC';
 
 // Props are intentionally not used - they're passed by Next.js but we don't need them
 export default function PredictPage(_props: { params?: unknown; searchParams?: unknown }) {
