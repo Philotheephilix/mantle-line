@@ -16,13 +16,12 @@ RUN apt-get update && apt-get install -y \
 
 # Install Docker CLI (compatible version for older Docker daemons - API 1.41)
 # Download and install Docker CLI 20.10.x which supports API 1.41
-# Remove any existing docker binary first, then install compatible version
-RUN rm -f /usr/bin/docker /usr/local/bin/docker && \
+# Replace /usr/bin/docker directly since it's in PATH first
+RUN rm -f /usr/bin/docker /usr/local/bin/docker /bin/docker && \
     curl -fsSL https://download.docker.com/linux/static/stable/x86_64/docker-20.10.24.tgz | tar -xz -C /tmp && \
-    mv /tmp/docker/docker /usr/local/bin/docker && \
-    chmod +x /usr/local/bin/docker && \
+    mv /tmp/docker/docker /usr/bin/docker && \
+    chmod +x /usr/bin/docker && \
     rm -rf /tmp/docker && \
-    ln -sf /usr/local/bin/docker /usr/bin/docker && \
     docker --version
 
 # Install pnpm globally
